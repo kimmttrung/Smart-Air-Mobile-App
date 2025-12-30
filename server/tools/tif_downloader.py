@@ -99,7 +99,7 @@ def get_next_7_days():
     )
     dates = []
 
-    for i in range(1, 8):  # 7 ngày tiếp theo (từ ngày mai đến +7 ngày)
+    for i in range(0, 8):  # 7 ngày tiếp theo (từ ngày mai đến +7 ngày)
         date = today + timedelta(days=i)
         date_str = date.strftime('%Y%m%d')
         dates.append(date_str)
