@@ -47,8 +47,8 @@ try {
 const DEFAULT_FALLBACK = 'http://10.0.2.2:8000';
 const DEPLOY_URL = 'https://smart-air-mobile-app.onrender.com'; // Thay bằng Vercel URL sau khi deploy
 // Thay YOUR_WIFI_IP bằng IP máy tính của bạn (xem bằng lệnh ipconfig)
-const LOCAL_NETWORK_URL = 'http://192.168.1.8:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
-// const LOCAL_NETWORK_URL = 'http://118.70.181.146:58888'; // VD:
+const LOCAL_NETWORK_URL = 'http://192.168.1.10:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
+// const LOCAL_NETWORK_URL = 'http:///10.11.48.216:8000'; // VD:
 const BASE_URL = LOCAL_NETWORK_URL || DEPLOY_URL || ENV_BASE || detectedBackendUrl || CONFIG_BASE || DEFAULT_FALLBACK;
 
 
@@ -66,8 +66,8 @@ const api = {
   // POST /location/save
   saveLocation: async (userId, lat, lng, aqi, address, pm25 = null) => {
     const url = `${BASE_URL}/location/save`;
-    console.warn(`[api.js] saveLocation: POST to ${url}`);
-    console.warn(`  userId=${userId}, lat=${lat}, lng=${lng}, aqi=${aqi}, pm25=${pm25}`);
+    // console.warn(`[api.js] saveLocation: POST to ${url}`);
+    // console.warn(`  userId=${userId}, lat=${lat}, lng=${lng}, aqi=${aqi}, pm25=${pm25}`);
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
@@ -169,7 +169,7 @@ const api = {
   // GET /location/stats/day?date=YYYY-MM-DD
   getLocationStatsForDay: async (date) => {
     const url = `${BASE_URL}/location/stats/day?date=${encodeURIComponent(date)}`;
-    console.log(`[api.js] getLocationStatsForDay -> GET ${url}`);
+    // console.log(`[api.js] getLocationStatsForDay -> GET ${url}`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -212,7 +212,7 @@ const api = {
   // GET /pm25/forecast?lat=21.0285&lon=105.8542&days=7
   getPM25Forecast: async (lat, lon, days = 7) => {
     const url = `${BASE_URL}/pm25/forecast?lat=${lat}&lon=${lon}&days=${days}`;
-    console.warn(`[api.js] getPM25Forecast: GET from ${url}`);
+    // console.warn(`[api.js] getPM25Forecast: GET from ${url}`);
     try {
       const res = await fetch(url, {
         headers: {
@@ -224,7 +224,7 @@ const api = {
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
       const data = await res.json();
-      console.warn(`[api.js] getPM25Forecast: Success, got ${data.forecast?.length || 0} days`);
+      // console.warn(`[api.js] getPM25Forecast: Success, got ${data.forecast?.length || 0} days`);
       return data;
     } catch (err) {
       console.error(`[api.js] getPM25Forecast: Error: ${err.message}`);
@@ -250,7 +250,7 @@ const api = {
       dateParam = `&date=${dateStr}`;
     }
     const url = `${BASE_URL}/pm25/point?lon=${lon}&lat=${lat}${dateParam}`;
-    console.warn(`[api.js] getPM25Point: GET from ${url}`);
+    // console.warn(`[api.js] getPM25Point: GET from ${url}`);
     
     try {
       const controller = new AbortController();

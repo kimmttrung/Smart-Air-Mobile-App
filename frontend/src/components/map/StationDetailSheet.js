@@ -1,6 +1,5 @@
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { scaleFont } from '../../constants/responsive';
@@ -15,6 +14,24 @@ export default function StationDetailSheet({ station, loading, selectedDay, onCl
   const navigation = useNavigation();
 
   if (!station) return null;
+
+  // Format timestamp/time for display at bottom of the card
+  let formattedTime = '';
+  try {
+    const ts = station.timestamp || station.time || station.date;
+    if (ts) {
+      const d = typeof ts === 'string' ? new Date(ts) : ts instanceof Date ? ts : new Date(ts);
+      const pad = (n) => n.toString().padStart(2, '0');
+      const hours = pad(d.getHours());
+      const minutes = pad(d.getMinutes());
+      const day = pad(d.getDate());
+      const month = pad(d.getMonth() + 1);
+      const year = d.getFullYear();
+      formattedTime = `${hours}:${minutes} ${day}-${month}-${year}`;
+    }
+  } catch (e) {
+    formattedTime = station.timestamp || station.time || '';
+  }
 
   return (
     <View style={styles.stationSheet}>
@@ -120,7 +137,12 @@ export default function StationDetailSheet({ station, loading, selectedDay, onCl
               )}
             </View>
           </View>
-
+          {/* Time displayed at the end of the card */}
+          {formattedTime !== '' && (
+            <View style={{ marginTop: 10, alignItems: 'center' }}>
+              <Text style={styles.stationTimeText}>Thời gian đo gần nhất: {formattedTime}</Text>
+            </View>
+          )}
           {/* Button Xem chi tiết */}
           <TouchableOpacity
             style={styles.detailButton}
@@ -136,6 +158,8 @@ export default function StationDetailSheet({ station, loading, selectedDay, onCl
             </Text>
             <Feather name="chevron-right" size={16} color="#ffffff" />
           </TouchableOpacity>
+
+          
         </View>
       )}
     </View>
@@ -262,6 +286,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
     marginRight: 6,
+  },
+  stationTimeText: {
+    fontSize: scaleFont(12),
+    color: '#6b7280',
   },
 });
 

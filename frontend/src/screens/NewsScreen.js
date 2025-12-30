@@ -6,134 +6,13 @@ import { WebView } from 'react-native-webview';
 import { scaleFont } from '../constants/responsive';
 export default function NewsScreen() {
   // Fallback articles about weather and air pollution in Vietnamese
-  const fallbackArticles = [
-    {
-      id: 1,
-      title: 'Chất lượng không khí Hà Nội xấu đi do ô nhiễm bụi mịn PM2.5',
-      source: 'VnExpress',
-      date: new Date().toISOString().split('T')[0],
-      category: 'Môi trường',
-      img: null,
-      summary: 'Chỉ số AQI tại nhiều khu vực Hà Nội vượt ngưỡng 150, ở mức độ không lành mạnh. Chuyên gia khuyến cáo người dân hạn chế ra ngoài và đeo khẩu trang khi cần thiết.',
-      readTime: '3 phút đọc',
-      views: '5.2k',
-      url: '#',
-    },
-    {
-      id: 2,
-      title: 'Dự báo thời tiết: Không khí lạnh tăng cường, nhiệt độ giảm sâu',
-      source: 'Khí tượng Thủy văn',
-      date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-      category: 'Thời tiết',
-      img: null,
-      summary: 'Đợt không khí lạnh mới sẽ ảnh hưởng đến miền Bắc từ đêm nay, nhiệt độ có thể giảm xuống 15-17°C. Vùng núi cao có khả năng xuất hiện sương muối và băng giá.',
-      readTime: '2 phút đọc',
-      views: '8.1k',
-      url: '#',
-    },
-    {
-      id: 3,
-      title: 'Ô nhiễm không khí ảnh hưởng nghiêm trọng đến sức khỏe trẻ em',
-      source: 'Bộ Y tế',
-      date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-      category: 'Sức khỏe',
-      img: null,
-      summary: 'Nghiên cứu mới cho thấy trẻ em tiếp xúc với không khí ô nhiễm có nguy cơ cao mắc các bệnh về hô hấp. Phụ huynh cần chú ý theo dõi chỉ số AQI hàng ngày.',
-      readTime: '4 phút đọc',
-      views: '6.7k',
-      url: '#',
-    },
-    {
-      id: 4,
-      title: 'Hà Nội lắp đặt thêm 30 trạm quan trắc chất lượng không khí',
-      source: 'Thanh Niên',
-      date: new Date(Date.now() - 259200000).toISOString().split('T')[0],
-      category: 'Công nghệ',
-      img: null,
-      summary: 'Dự án nâng cấp hệ thống quan trắc môi trường với 30 trạm tự động mới sẽ cung cấp dữ liệu thời gian thực về chất lượng không khí cho người dân.',
-      readTime: '3 phút đọc',
-      views: '4.3k',
-      url: '#',
-    },
-    {
-      id: 5,
-      title: 'Biến đổi khí hậu: Nhiệt độ toàn cầu tăng nhanh chưa từng thấy',
-      source: 'BBC News',
-      date: new Date(Date.now() - 345600000).toISOString().split('T')[0],
-      category: 'Khoa học',
-      img: null,
-      summary: 'Báo cáo mới nhất của IPCC cho thấy nhiệt độ trung bình toàn cầu đã tăng 1.1°C so với thời kỳ tiền công nghiệp, gây ra nhiều hậu quả nghiêm trọng.',
-      readTime: '6 phút đọc',
-      views: '12.5k',
-      url: '#',
-    },
-    {
-      id: 6,
-      title: 'Mưa lớn kéo dài, chất lượng không khí được cải thiện đáng kể',
-      source: 'VnExpress',
-      date: new Date(Date.now() - 432000000).toISOString().split('T')[0],
-      category: 'Thời tiết',
-      img: null,
-      summary: 'Sau đợt mưa kéo dài 3 ngày, chỉ số AQI tại các thành phố lớn giảm xuống mức tốt. Chuyên gia khí tượng dự báo thời tiết thuận lợi sẽ tiếp tục trong tuần tới.',
-      readTime: '2 phút đọc',
-      views: '3.8k',
-      url: '#',
-    },
-    {
-      id: 7,
-      title: 'Khuyến cáo: 5 cách bảo vệ sức khỏe khi không khí ô nhiễm',
-      source: 'Sức khỏe & Đời sống',
-      date: new Date(Date.now() - 518400000).toISOString().split('T')[0],
-      category: 'Sức khỏe',
-      img: null,
-      summary: 'Bác sĩ khuyên người dân nên đeo khẩu trang N95, hạn chế hoạt động ngoài trời, sử dụng máy lọc không khí trong nhà và tăng cường rau xanh trong khẩu phần ăn.',
-      readTime: '5 phút đọc',
-      views: '9.2k',
-      url: '#',
-    },
-    {
-      id: 8,
-      title: 'Công nghệ AI giúp dự báo chất lượng không khí chính xác hơn',
-      source: 'VnTech',
-      date: new Date(Date.now() - 604800000).toISOString().split('T')[0],
-      category: 'Công nghệ',
-      img: null,
-      summary: 'Hệ thống AI mới có thể dự báo chất lượng không khí với độ chính xác lên đến 95%, giúp người dân chủ động lên kế hoạch sinh hoạt hàng ngày.',
-      readTime: '4 phút đọc',
-      views: '7.6k',
-      url: '#',
-    },
-    {
-      id: 9,
-      title: 'Nghiên cứu: Cây xanh đô thị giảm tới 30% ô nhiễm không khí',
-      source: 'Tạp chí Môi trường',
-      date: new Date(Date.now() - 691200000).toISOString().split('T')[0],
-      category: 'Môi trường',
-      img: null,
-      summary: 'Nghiên cứu tại các thành phố lớn cho thấy tăng diện tích cây xanh có thể giảm đáng kể nồng độ bụi mịn PM2.5 và cải thiện chất lượng không khí đô thị.',
-      readTime: '4 phút đọc',
-      views: '5.9k',
-      url: '#',
-    },
-    {
-      id: 10,
-      title: 'Thời tiết cuối tuần: Nắng đẹp, không khí trong lành',
-      source: 'Khí tượng Thủy văn',
-      date: new Date(Date.now() - 777600000).toISOString().split('T')[0],
-      category: 'Thời tiết',
-      img: null,
-      summary: 'Dự báo cuối tuần này thời tiết khô ráo, nắng đẹp với nhiệt độ 22-28°C. Chỉ số AQI ở mức tốt, thích hợp cho các hoạt động ngoài trời.',
-      readTime: '2 phút đọc',
-      views: '11.3k',
-      url: '#',
-    },
-  ];
+  const fallbackArticles = [];
 
   // NewsAPI configuration - Free tier API
   const NEWS_API_KEY = 'd3867633e8d94f38af3885c5afb6c898'; // Free NewsAPI key
   const NEWS_API_URL = 'https://newsapi.org/v2/everything';
   
-  const [newsData, setNewsData] = useState(fallbackArticles);
+  const [newsData, setNewsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);

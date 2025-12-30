@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef } from 'react';
 import api from '../../services/api';
-
+import { reverseGeocode } from '../../services/mapService';
 const getTrackingKey = (userId) => `@location_tracking_${userId}`;
 const TRACKING_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
 const MIN_SAVE_INTERVAL = 30 * 60 * 1000; // 30 minutes
@@ -22,7 +22,9 @@ const getAddressFromCoords = async (latitude, longitude) => {
     const results = await Location.reverseGeocodeAsync({ latitude, longitude });
     if (results && results.length > 0) {
       const result = results[0];
-      const parts = [result.street, result.district, result.city, result.region].filter(Boolean);
+      // console.log('[useLocationTracking] Reverse geocoding result:', result);
+      const parts = [result.name, result.subregion, result.region].filter(Boolean);
+      console.log('[useLocationTracking] Formatted address parts:', parts);
       return parts.join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     }
   } catch (error) {
@@ -104,7 +106,16 @@ const saveLocationToServer = async (
     }
 
     console.log('Address before reverse geocoding:', address);
-    const finalAddress = await getAddressFromCoords(latitude, longitude);
+    // Nếu đã có `address` từ UI (ví dụ khi bấm GPS), dùng luôn để tránh khác biệt
+  
+  const locationData = await reverseGeocode(latitude, longitude);
+  // console.log('Reverse geocoding data:', locationData);
+
+  // Use `address` returned by mapService.reverseGeocode when available,
+  // otherwise fall back to `name` then device reverseGeocode.
+  const reverseAddress = (locationData && (locationData.address || locationData.name)) || null;
+  // console.log('Reverse geocode resolved address:', reverseAddress);
+  const finalAddress = address || reverseAddress || (await getAddressFromCoords(latitude, longitude));
     const finalAqi = aqi !== null && aqi !== undefined ? aqi : null;
     const finalPm25 = pm25 !== null && pm25 !== undefined ? pm25 : finalAqi ? finalAqi * 0.6 : null;
 

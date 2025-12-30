@@ -106,7 +106,7 @@ export default function useExposureHistory(getLocationHistory, onUserLocationUpd
     const fetchStats = async () => {
       try {
         setDayStats(null);
-        console.log('[useExposureHistory] Loading day stats for date:', targetDate);
+        // console.log('[useExposureHistory] Loading day stats for date:', targetDate);
         const stats = await api.getLocationStatsForDay(targetDate);
         if (!cancelled) {
           setDayStats(stats);

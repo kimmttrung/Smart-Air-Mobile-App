@@ -388,10 +388,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 18,
     overflow: 'hidden',
-    minHeight: 130,
+    minHeight: 150,
   },
   weekendCardImage: {
-    height: 140,
+    height: 150,
     width: '100%',
     justifyContent: 'flex-end',
   },

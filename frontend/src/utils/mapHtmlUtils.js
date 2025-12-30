@@ -101,7 +101,7 @@ export const generateLeafletHTML = (baseUrl, bottomOffsetPx = 10) => `
         // Sử dụng TiTiler server với AQI colormap từ BASE_URL
         const serverUrl = \`${baseUrl}\`;
         
-        const tileUrl = serverUrl + '/pm25/tiles/{z}/{x}/{y}.png?date=' + dateParam + '&colormap_name=aqi&ngrok-skip-browser-warning=true';
+        const tileUrl = serverUrl + '/pm25/tiles/{z}/{x}/{y}.png?date=' + dateParam + '&colormap_name=aqi';
         console.log('🗺️ Creating WMS layer with URL:', tileUrl.replace('{z}', '11').replace('{x}', '1626').replace('{y}', '901'));
         console.log('📍 Server URL:', serverUrl);
         console.log('📅 Date param:', dateParam);
