@@ -179,30 +179,6 @@ def download_tif_from_minio(
         return False
 
 
-def check_file_exists_in_minio(mc: Minio, bucket: str, minio_path: str):
-    """
-    Kiểm tra file có tồn tại trong MinIO không
-
-    Args:
-        mc: MinIO client instance
-        bucket: MinIO bucket name
-        minio_path: Path to file in MinIO
-
-    Returns:
-        bool: True if exists, False otherwise
-    """
-    try:
-        mc.stat_object(bucket, minio_path)
-        return True
-    except S3Error as e:
-        if e.code == 'NoSuchKey':
-            return False
-        raise
-    except Exception as e:
-        logger.warning(f'⚠️  Lỗi khi kiểm tra file {minio_path}: {e}')
-        return False
-
-
 def download_tif_files():
     """
     Hàm chính: Tải ảnh TIF cho 7 ngày tiếp theo từ MinIO
@@ -257,45 +233,35 @@ def download_tif_files():
     success_count = 0
     error_count = 0
 
-    # Tải từng file - ưu tiên 1km, fallback sang 3km
-    for date_str in dates:
-        # Thử tải 1km trước (ưu tiên)
-        minio_path_1km = get_minio_file_path(date_str, '1km')
-        local_filename_1km = f'PM25_{date_str}_1kmNRT.tif'
-        local_path_1km = TIF_DIR / local_filename_1km
-
-        # Kiểm tra file đã tồn tại để log thông tin ghi đè
-        if local_path_1km.exists():
-            old_size_mb = local_path_1km.stat().st_size / (1024 * 1024)
+    def log_file_overwrite(local_path: Path, filename: str) -> None:
+        """Helper function để log thông tin khi file đã tồn tại"""
+        if local_path.exists():
+            old_size_mb = local_path.stat().st_size / (1024 * 1024)
             logger.info(
-                f'🔄 File đã tồn tại, sẽ ghi đè: {local_filename_1km} '
+                f'🔄 File đã tồn tại, sẽ ghi đè: {filename} '
                 f'(kích thước cũ: {old_size_mb:.2f} MB)'
             )
 
-        # Tải file 1km (sẽ tự động ghi đè nếu file đã tồn tại)
-        if download_tif_from_minio(
-            mc, MINIO_BUCKET, minio_path_1km, local_path_1km
-        ):
+    def try_download_file(date_str: str, resolution: str) -> bool:
+        """Helper function để thử tải file với resolution cụ thể"""
+        minio_path = get_minio_file_path(date_str, resolution)
+        local_filename = f'PM25_{date_str}_{resolution}NRT.tif'
+        local_path = TIF_DIR / local_filename
+        
+        log_file_overwrite(local_path, local_filename)
+        return download_tif_from_minio(mc, MINIO_BUCKET, minio_path, local_path)
+
+    # Tải từng file - ưu tiên 1km, fallback sang 3km
+    for date_str in dates:
+        # Thử tải 1km trước (ưu tiên)
+        if try_download_file(date_str, '1km'):
             success_count += 1
         else:
             # Nếu không tải được 1km, thử tải 3km (fallback)
             logger.info(
                 f'⚠️  Không tải được 1km, thử tải 3km cho ngày {date_str}'
             )
-            minio_path_3km = get_minio_file_path(date_str, '3km')
-            local_filename_3km = f'PM25_{date_str}_3kmNRT.tif'
-            local_path_3km = TIF_DIR / local_filename_3km
-
-            if local_path_3km.exists():
-                old_size_mb = local_path_3km.stat().st_size / (1024 * 1024)
-                logger.info(
-                    f'🔄 File đã tồn tại, sẽ ghi đè: {local_filename_3km} '
-                    f'(kích thước cũ: {old_size_mb:.2f} MB)'
-                )
-
-            if download_tif_from_minio(
-                mc, MINIO_BUCKET, minio_path_3km, local_path_3km
-            ):
+            if try_download_file(date_str, '3km'):
                 success_count += 1
             else:
                 error_count += 1
