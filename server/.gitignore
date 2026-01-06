@@ -63,4 +63,4 @@ testing/
 docs/
 node_modules/
 .vercel
-/data
+# /data
