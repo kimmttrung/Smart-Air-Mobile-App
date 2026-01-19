@@ -126,10 +126,8 @@ export default function useExposureHistory(getLocationHistory, onUserLocationUpd
     setLoading?.(true);
     try {
       await loadHistoryBasic();
-      if (overviewLoaded && loadOverviewData) {
-        // Overview sẽ tự reload khi historyData thay đổi
-        setHistoryLoaded(false);
-      }
+      // Don't reset historyLoaded here - it causes flickering
+      // Overview will auto-reload when historyData changes
     } finally {
       setLoading?.(false);
     }
