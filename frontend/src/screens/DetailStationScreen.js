@@ -95,13 +95,13 @@ export default function DetailStationScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={styles.backIcon}>{'‹'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <LocationChip
           date={displayTs.date}
