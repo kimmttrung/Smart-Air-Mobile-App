@@ -15,7 +15,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nvnhat04sorganization.smartair",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SmartAir cần truy cập vị trí để cảnh báo khi bạn ở vùng có chất lượng không khí xấu.",
+        "NSLocationWhenInUseUsageDescription": "SmartAir cần truy cập vị trí để hiển thị chất lượng không khí tại vị trí của bạn.",
+        "NSLocationAlwaysUsageDescription": "SmartAir cần truy cập vị trí trong background để cảnh báo khi bạn di chuyển vào vùng có AQI cao.",
+        "UIBackgroundModes": ["location", "fetch"]
       }
     },
     "android": {
@@ -25,11 +29,37 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.nvnhat04sorganization.smartair"
+      "package": "com.nvnhat04sorganization.smartair",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "favicon": "./public/logo_smartair.png"
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "SmartAir cần truy cập vị trí để cảnh báo khi bạn ở vùng có chất lượng không khí xấu.",
+          "locationAlwaysPermission": "SmartAir cần truy cập vị trí trong background để cảnh báo khi bạn di chuyển vào vùng có AQI cao.",
+          "locationWhenInUsePermission": "SmartAir cần truy cập vị trí để hiển thị chất lượng không khí tại vị trí của bạn."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./public/logo_smartair.png",
+          "color": "#4CAF50",
+          "sounds": ["./assets/notification_sound.wav"]
+        }
+      ]
+    ],
     "extra": {
       "backendUrl": "AUTO_DISCOVER",
       "authServerUrl": "AUTO_DISCOVER",

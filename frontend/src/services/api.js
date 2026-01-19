@@ -47,8 +47,9 @@ try {
 const DEFAULT_FALLBACK = 'http://10.0.2.2:8000';
 const DEPLOY_URL = 'https://smart-air-mobile-app.onrender.com'; // Thay bằng Vercel URL sau khi deploy
 // Thay YOUR_WIFI_IP bằng IP máy tính của bạn (xem bằng lệnh ipconfig)
-const LOCAL_NETWORK_URL = 'http://192.168.1.10:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
-// const LOCAL_NETWORK_URL = 'http:///10.11.48.216:8000'; // VD:
+// const LOCAL_NETWORK_URL = 'http://192.168.1.10:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
+// const LOCAL_NETWORK_URL = 'http://10.11.54.33:8000'; // VD:
+const LOCAL_NETWORK_URL = ''; 
 const BASE_URL = LOCAL_NETWORK_URL || DEPLOY_URL || ENV_BASE || detectedBackendUrl || CONFIG_BASE || DEFAULT_FALLBACK;
 
 
@@ -235,6 +236,7 @@ const api = {
   // GET /pm25/point?lon=105.8542&lat=21.0285&date=20241206
   getPM25Point: async (lat, lon, date = null) => {
     let dateParam = '';
+    console.warn(`[api.js] getPM25Point: lat=${lat}, lon=${lon}, date=${date}`);
     if (date) {
       let dateStr = date;
       if (date instanceof Date) {
@@ -273,7 +275,7 @@ const api = {
       }
       
       const data = await res.json();
-      console.warn(`[api.js] getPM25Point: Success, AQI=${data.aqi}`);
+      // console.warn(`[api.js] getPM25Point: Success, AQI=${data.aqi}`);
       return data;
     } catch (err) {
       if (err.name === 'AbortError') {
@@ -281,6 +283,30 @@ const api = {
         throw new Error('Timeout: Backend không phản hồi trong 5 giây');
       }
       console.error(`[api.js] getPM25Point: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  // GET AQI by location (lat, lon) - For Geofencing
+  getAQIByLocation: async (lat, lon) => {
+    try {
+      // Get today's date as yyyyMMdd
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${y}${m}${d}`;
+      
+      // Reuse getPM25Point for AQI data with today's date
+      const data = await api.getPM25Point(lat, lon, dateStr);
+      return {
+        aqi: data.aqi,
+        pm25: data.pm25,
+        locationName: data.location || 'Unknown',
+      };
+    } catch (err) {
+      console.error(`[api.js] getAQIByLocation: Error: ${err.message}`);
       throw err;
     }
   }
@@ -427,3 +453,6 @@ api.auth = {
 };
 
 export default api;
+
+// Export individual functions for direct import
+export const { getAQIByLocation, getPM25Point, getPM25Forecast, saveLocation, getLocationHistory, getLocationStats } = api;

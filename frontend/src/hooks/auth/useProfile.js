@@ -1,7 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
+import notificationService from '../../services/notificationService';
 
 /**
  * Encapsulate ProfileScreen side-effects and state:
@@ -70,7 +71,31 @@ export default function useProfile(navigation) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('auth');
+              // Reset notification service user ID (but keep notifications in storage)
+              notificationService.setUserId(null);
+              
+              // Clear user-scoped keys from AsyncStorage (targeted clear)
+              const KEYS_TO_REMOVE = [
+                'auth',
+                '@expo_push_token'
+              ];
+
+              // Attempt multiRemove, fallback to individual removeItem if needed
+              try {
+                await AsyncStorage.multiRemove(KEYS_TO_REMOVE);
+              } catch (innerErr) {
+                // multiRemove may fail on some platforms; try individual removes
+                console.warn('[useProfile] multiRemove failed, falling back', innerErr);
+                for (const k of KEYS_TO_REMOVE) {
+                  try {
+                    await AsyncStorage.removeItem(k);
+                  } catch (e2) {
+                    console.warn('[useProfile] removeItem failed for', k, e2);
+                  }
+                }
+              }
+
+              // Clear in-memory state and navigate to Login
               setAuth(null);
               setProfile(null);
               navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
