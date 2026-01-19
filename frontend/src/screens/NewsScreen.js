@@ -123,7 +123,7 @@ export default function NewsScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>
-              {crawling ? 'Đang crawl tin tức mới...' : 'Đang tải tin tức...'}
+              {crawling ? 'Đang tải tin tức mới...' : 'Đang tải tin tức...'}
             </Text>
             {crawling && (
               <Text style={styles.crawlingSubtext}>
