@@ -14,6 +14,7 @@ export default function HistoryTab({
   onReload,
 }) {
   if (loading || !historyLoaded) {
+    // console.log('HistoryTab: loading history data...', { loading, historyLoaded });
     return (
       <View style={styles.loadingTabContainer}>
         <ActivityIndicator size="large" color="#2563eb" />

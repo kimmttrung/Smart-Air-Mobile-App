@@ -308,7 +308,7 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {/* Test & Actions */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Thử nghiệm & Hành động</Text>
           
           <TouchableOpacity
@@ -347,7 +347,7 @@ export default function NotificationSettingsScreen() {
           >
             <Text style={styles.buttonText}>🔄 Làm mới</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Info */}
         <View style={styles.infoSection}>

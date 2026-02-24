@@ -45,7 +45,7 @@ async def get_pm25_point(
         tif_path = get_tif_file_path(date)
         abs_path = str(tif_path.resolve())
         
-        logger.info(f"Point query: lon={lon}, lat={lat}, date={date}, file={tif_path.name}")
+        # logger.info(f"Point query: lon={lon}, lat={lat}, date={date}, file={tif_path.name}")
         
         with rasterio.open(abs_path) as src:
             try:
