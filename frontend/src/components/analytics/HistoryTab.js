@@ -227,9 +227,9 @@ function DayStatsCard({ dayStats }) {
               >
                 {addr}
               </Text>
-              <Text style={{ color: '#64748b', fontSize: scaleFont(13), flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
+              {/* <Text style={{ color: '#64748b', fontSize: scaleFont(13), flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
                 {count} lần
-              </Text>
+              </Text> */}
             </View>
           ))}
         </View>
