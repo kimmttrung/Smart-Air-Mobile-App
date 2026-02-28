@@ -98,7 +98,11 @@ async def register(payload: UserCreate):
     
     # Create access token
     access_token = create_access_token(
-        data={"sub": payload.email, "user_id": str(result.inserted_id)},
+        data={
+            "sub": payload.email, 
+            "user_id": str(result.inserted_id),
+            "role": user_dict["role"]
+        },
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
@@ -167,7 +171,11 @@ async def login(payload: UserLogin):
     
     # Create access token
     access_token = create_access_token(
-        data={"sub": user["email"], "user_id": str(user["_id"])},
+        data={
+            "sub": user["email"], 
+            "user_id": str(user["_id"]),
+            "role": user.get("role", "user")
+        },
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     

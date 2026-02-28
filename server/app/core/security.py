@@ -63,6 +63,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     
     email: str = payload.get("sub")
     user_id: str = payload.get("user_id")
+    role: str = payload.get("role", "user")  # Default to 'user' if not in token
     
     if email is None or user_id is None:
         raise HTTPException(
@@ -71,4 +72,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    return {"email": email, "user_id": user_id}
+    return {"email": email, "user_id": user_id, "role": role}
+
+async def get_current_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Dependency to verify current user is admin"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user

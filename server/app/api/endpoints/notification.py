@@ -4,9 +4,10 @@ Notification endpoints for managing user notifications in MongoDB
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from app.core.security import get_current_user
+from app.core.security import get_current_admin, get_current_user
 from app.db.mongodb import get_database
-from app.models.notification import (NotificationCreate, NotificationResponse,
+from app.models.notification import (BroadcastNotification, BroadcastResponse,
+                                     NotificationCreate, NotificationResponse,
                                      NotificationStats, NotificationUpdate)
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -256,3 +257,81 @@ async def delete_notification(
         "success": True,
         "message": "Notification deleted"
     }
+
+
+@router.post('/broadcast', response_model=BroadcastResponse, status_code=status.HTTP_201_CREATED)
+async def broadcast_notification(
+    payload: BroadcastNotification,
+    admin_user: dict = Depends(get_current_admin)
+):
+    """
+    Broadcast notification to all users or specific users (Admin only)
+    
+    This endpoint allows admins to send notifications to:
+    - All users in the system (if target_users is None)
+    - Specific users (if target_users contains list of user_ids)
+    
+    Example payload:
+    {
+        "type": "system_announcement",
+        "title": "Bảo trì hệ thống",
+        "body": "Hệ thống sẽ bảo trì từ 2-4 giờ sáng ngày mai",
+        "data": {"priority": "high", "url": "https://..."},
+        "target_users": null  // null = all users, or ["user1", "user2", ...]
+    }
+    """
+    db = get_database()
+    
+    # Get target users
+    if payload.target_users:
+        # Send to specific users
+        target_user_ids = payload.target_users
+        total_users = len(target_user_ids)
+    else:
+        # Send to all users - fetch all user_ids from users collection
+        users_cursor = db.users.find({}, {"_id": 1})
+        all_users = await users_cursor.to_list(length=None)
+        target_user_ids = [str(user["_id"]) for user in all_users]
+        total_users = len(target_user_ids)
+    
+    if total_users == 0:
+        return BroadcastResponse(
+            success=True,
+            total_users=0,
+            notifications_created=0,
+            message="No users to send notification to"
+        )
+    
+    # Create notification documents for all target users
+    notifications_to_insert = []
+    timestamp = get_vn_now()
+    
+    for user_id in target_user_ids:
+        notification_doc = {
+            "user_id": user_id,
+            "type": payload.type,
+            "data": payload.data,
+            "title": payload.title,
+            "body": payload.body,
+            "timestamp": timestamp,
+            "read": False,
+            "created_at": timestamp,
+        }
+        notifications_to_insert.append(notification_doc)
+    
+    # Bulk insert all notifications
+    try:
+        result = await db.notifications.insert_many(notifications_to_insert)
+        notifications_created = len(result.inserted_ids)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to broadcast notifications: {str(e)}"
+        )
+    
+    return BroadcastResponse(
+        success=True,
+        total_users=total_users,
+        notifications_created=notifications_created,
+        message=f"Successfully sent notification to {notifications_created} users"
+    )

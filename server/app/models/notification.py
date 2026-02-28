@@ -43,3 +43,20 @@ class NotificationStats(BaseModel):
     total: int
     unread: int
     today: int
+
+
+class BroadcastNotification(BaseModel):
+    """Schema for broadcasting notification to all users or filtered users"""
+    type: str = Field(..., description="Notification type")
+    title: str = Field(..., description="Notification title")
+    body: str = Field(..., description="Notification body")
+    data: dict = Field(default={}, description="Additional notification data")
+    target_users: Optional[list[str]] = Field(None, description="List of user_ids. If None, send to all users")
+    
+
+class BroadcastResponse(BaseModel):
+    """Response for broadcast notification"""
+    success: bool
+    total_users: int
+    notifications_created: int
+    message: str
