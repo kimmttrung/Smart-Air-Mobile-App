@@ -22,6 +22,8 @@ export default function NotificationSettingsScreen() {
   const [dailyStatsEnabled, setDailyStatsEnabled] = useState(false);
   const [currentAQI, setCurrentAQI] = useState(null);
   const [lastStats, setLastStats] = useState(null);
+  const [notificationStats, setNotificationStats] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -30,6 +32,17 @@ export default function NotificationSettingsScreen() {
   const loadSettings = async () => {
     try {
       setLoading(true);
+      
+      // Ensure user ID is set for notification service
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (authStr) {
+        const auth = JSON.parse(authStr);
+        if (auth.uid && !notificationService.currentUserId) {
+          console.log('[NotificationSettings] Setting user ID from auth:', auth.uid);
+          notificationService.setUserId(auth.uid);
+        }
+      }
       
       // Check notification permission
       const notifEnabled = await notificationService.isNotificationEnabled();
@@ -50,6 +63,10 @@ export default function NotificationSettingsScreen() {
       // Load last stats
       const stats = await dailyStatsService.getLastStats();
       setLastStats(stats);
+      
+      // Load notification stats (local vs backend)
+      const notifStats = await notificationService.getNotificationStats();
+      setNotificationStats(notifStats);
       
     } catch (error) {
       console.error('[NotificationSettings] Load settings error:', error);
@@ -115,16 +132,23 @@ export default function NotificationSettingsScreen() {
 
   const handleTestAQINotification = async () => {
     try {
-      console.log('[NotificationSettings] Sending test AQI notification');
+      // Force refresh AQI data để đảm bảo có pm25 mới nhất
+      console.log('[NotificationSettings] Refreshing AQI data for test...');
+      const freshAQI = await geofenceService.getCurrentAQI(true); // forceRefresh = true
       
-      // Gửi ngay với data có sẵn, không đợi API
-      const aqi = currentAQI?.aqi ?? 175;
-      const location = currentAQI?.locationName ?? (
-        (currentAQI?.latitude && currentAQI?.longitude) 
-          ? `${currentAQI.latitude.toFixed(4)}, ${currentAQI.longitude.toFixed(4)}` 
+      // Update state với data mới
+      setCurrentAQI(freshAQI);
+      
+      console.log('[NotificationSettings] Fresh AQI data:', freshAQI);
+      
+      // Gửi ngay với data mới fetch
+      const aqi = freshAQI?.aqi ?? 175;
+      const location = freshAQI?.locationName ?? (
+        (freshAQI?.latitude && freshAQI?.longitude) 
+          ? `${freshAQI.latitude.toFixed(4)}, ${freshAQI.longitude.toFixed(4)}` 
           : 'Vị trí test'
       );
-      const pm25 = currentAQI?.pm25 ?? null;
+      const pm25 = freshAQI?.pm25 ?? null;
 
       console.log('[NotificationSettings] Test AQI data:', { aqi, location, pm25 });
       
@@ -134,9 +158,12 @@ export default function NotificationSettingsScreen() {
       // Hiển thị confirmation ngay
       await notificationService.presentNotification(
         '✓ Test hoàn tất', 
-        `Đã gửi thông báo AQI ${aqi}`,
+        `Đã gửi thông báo AQI ${aqi}${pm25 ? `, PM2.5 ${pm25.toFixed(1)}` : ''}`,
         { type: 'test_confirmation' }
       );
+      
+      // Reload notification stats
+      setTimeout(() => loadSettings(), 1000);
     } catch (error) {
       console.error('[NotificationSettings] Test AQI notification error:', error);
       Alert.alert('Lỗi', error.message);
@@ -158,16 +185,20 @@ export default function NotificationSettingsScreen() {
         };
 
         await notificationService.sendDailyStats(demoStats);
-        // Thêm 1 local confirmation nhỏ
-        // setTimeout(() => {
-        //   notificationService.sendLocalNotification('✓ Test hoàn tất', 'Đã gửi thông báo thống kê (demo)');
-        // }, 1000);
+        
+        // Confirmation
+        setTimeout(() => {
+          notificationService.presentNotification('✓ Test hoàn tất', 'Đã gửi thông báo thống kê (demo)');
+        }, 500);
       } else {
         // Confirmation
         setTimeout(() => {
-          notificationService.sendLocalNotification('✓ Test hoàn tất', 'Đã gửi thông báo thống kê');
-        }, 1000);
+          notificationService.presentNotification('✓ Test hoàn tất', 'Đã gửi thông báo thống kê');
+        }, 500);
       }
+      
+      // Reload notification stats
+      setTimeout(() => loadSettings(), 1000);
     } catch (error) {
       console.error('[NotificationSettings] Test daily stats error:', error);
       Alert.alert('Lỗi', error.message);
@@ -191,6 +222,113 @@ export default function NotificationSettingsScreen() {
       console.error('[NotificationSettings] View stats error:', error);
       Alert.alert('Lỗi', error.message);
     }
+  };
+
+  const handleDebugInfo = async () => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      const auth = authStr ? JSON.parse(authStr) : null;
+      
+      const debugInfo = {
+        userId: auth?.uid || 'NOT_SET',
+        notificationServiceUserId: notificationService.currentUserId || 'NOT_SET',
+        hasAuth: !!auth,
+        email: auth?.email || 'N/A',
+      };
+      
+      console.log('[NotificationSettings] Debug info:', debugInfo);
+      
+      Alert.alert(
+        'Debug Information',
+        `User ID: ${debugInfo.userId}\n` +
+        `Service User ID: ${debugInfo.notificationServiceUserId}\n` +
+        `Has Auth: ${debugInfo.hasAuth}\n` +
+        `Email: ${debugInfo.email}\n\n` +
+        `Check console for more details.`
+      );
+      
+      // Ensure user ID is set
+      if (auth?.uid && !notificationService.currentUserId) {
+        console.log('[NotificationSettings] Setting user ID:', auth.uid);
+        notificationService.setUserId(auth.uid);
+        await notificationService.presentNotification('Debug', 'User ID has been set');
+      }
+    } catch (error) {
+      console.error('[NotificationSettings] Debug info error:', error);
+      Alert.alert('Lỗi', error.message);
+    }
+  };
+
+  const handleSyncNotifications = async () => {
+    try {
+      setSyncing(true);
+      const result = await notificationService.syncLocalNotificationsToBackend();
+      
+      if (result.success) {
+        Alert.alert(
+          'Đồng bộ thành công',
+          `Đã đồng bộ ${result.synced} thông báo lên server.${result.failed > 0 ? `\n\nThất bại: ${result.failed}` : ''}`,
+          [{ text: 'OK', onPress: loadSettings }]
+        );
+      } else {
+        Alert.alert('Lỗi', result.message || result.error || 'Không thể đồng bộ');
+      }
+    } catch (error) {
+      console.error('[NotificationSettings] Sync error:', error);
+      Alert.alert('Lỗi', error.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleClearLocalNotifications = async () => {
+    Alert.alert(
+      'Xóa thông báo local',
+      'Xóa tất cả thông báo trong AsyncStorage (local device)?\n\nThông báo trên server vẫn được giữ.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await notificationService.clearLocalStorage();
+              await notificationService.presentNotification('Thành công', 'Đã xóa thông báo local');
+              await loadSettings();
+            } catch (error) {
+              Alert.alert('Lỗi', error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAllNotifications = async () => {
+    Alert.alert(
+      'Xóa tất cả thông báo',
+      'Xóa tất cả thông báo (cả local và server)?\n\nHành động này không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa tất cả',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Clear backend
+              await notificationService.clearHistory(false);
+              // Clear local
+              await notificationService.clearLocalStorage();
+              await notificationService.presentNotification('Thành công', 'Đã xóa tất cả thông báo');
+              await loadSettings();
+            } catch (error) {
+              Alert.alert('Lỗi', error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleClearHistory = async () => {
@@ -307,8 +445,55 @@ export default function NotificationSettingsScreen() {
           )}
         </View>
 
+        {/* Notification Storage Management */}
+        {notificationStats && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quản lý Thông báo</Text>
+            
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Local (Device)</Text>
+                <Text style={styles.statValue}>{notificationStats.local}</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Server (Cloud)</Text>
+                <Text style={styles.statValue}>{notificationStats.backend.total}</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Chưa đọc</Text>
+                <Text style={styles.statValue}>{notificationStats.backend.unread}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
+              onPress={handleSyncNotifications}
+              disabled={syncing || !notificationStats.useBackend}
+            >
+              <Text style={styles.buttonText}>
+                {syncing ? '⏳ Đang đồng bộ...' : '☁️ Đồng bộ lên Server'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.warningButton]}
+              onPress={handleClearLocalNotifications}
+              disabled={notificationStats.local === 0}
+            >
+              <Text style={styles.buttonText}>🗑️ Xóa thông báo Local</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.dangerButton]}
+              onPress={handleClearAllNotifications}
+            >
+              <Text style={styles.buttonText}>⚠️ Xóa tất cả thông báo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Test & Actions */}
-        {/* <View style={styles.section}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Thử nghiệm & Hành động</Text>
           
           <TouchableOpacity
@@ -347,13 +532,26 @@ export default function NotificationSettingsScreen() {
           >
             <Text style={styles.buttonText}>🔄 Làm mới</Text>
           </TouchableOpacity>
-        </View> */}
+
+          <TouchableOpacity
+            style={[styles.button, styles.debugButton]}
+            onPress={handleDebugInfo}
+          >
+            <Text style={styles.buttonText}>🔍 Debug Info</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Info */}
         <View style={styles.infoSection}>
           <Text style={styles.infoSectionText}>
             ℹ️ Tính năng geofencing cần quyền truy cập vị trí background.{'\n\n'}
-            📊 Cigarette equivalent được tính dựa trên PM2.5 và thời gian tiếp xúc.
+            📊 Cigarette equivalent được tính dựa trên PM2.5 và thời gian tiếp xúc.{'\n\n'}
+            ☁️ <Text style={styles.bold}>Đồng bộ thông báo:</Text>{'\n'}
+            • Local: Thông báo lưu trên thiết bị (AsyncStorage){'\n'}
+            • Server: Thông báo lưu trên cloud (MongoDB){'\n'}
+            • Nhấn "Đồng bộ lên Server" để chuyển thông báo local lên cloud{'\n'}
+            • Sau khi đồng bộ, thông báo local sẽ tự động xóa{'\n\n'}
+            💡 <Text style={styles.bold}>Lưu ý:</Text> Thông báo trên server sẽ đồng bộ giữa các thiết bị.
           </Text>
         </View>
       </ScrollView>
@@ -450,13 +648,45 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: 'center',
   },
+  primaryButton: {
+    backgroundColor: '#2196F3',
+  },
+  warningButton: {
+    backgroundColor: '#FF9800',
+  },
   dangerButton: {
     backgroundColor: '#F44336',
+  },
+  debugButton: {
+    backgroundColor: '#9E9E9E',
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1976D2',
   },
   infoSection: {
     backgroundColor: '#FFF9C4',
@@ -468,5 +698,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  bold: {
+    fontWeight: 'bold',
+    color: '#333',
   },
 });

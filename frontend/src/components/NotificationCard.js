@@ -6,8 +6,9 @@ import { scale } from '../constants/responsive';
  * NotificationCard - Component hiển thị một notification với status read/unread
  * @param {Object} notification - { id, title, body, timestamp, read, type, data }
  * @param {Function} onPress - Callback khi tap vào notification
+ * @param {Function} onDelete - Callback khi delete notification
  */
-export default function NotificationCard({ notification, onPress }) {
+export default function NotificationCard({ notification, onPress, onDelete }) {
   const { title: rawTitle, body: rawBody, timestamp, read, type, data } = notification;
 
   // Derive title/body when not provided (support payload like { type: 'aqi_info', data: { aqi, location } })
@@ -85,29 +86,42 @@ export default function NotificationCard({ notification, onPress }) {
   const icon = getIcon();
 
   return (
-    <TouchableOpacity
-      style={[styles.container, !read && styles.unreadContainer]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.iconContainer}>
-        <Feather name={icon.name} size={20} color={icon.color} />
-        {!read && <View style={styles.unreadDot} />}
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, !read && styles.unreadTitle]} numberOfLines={1}>
-            {title || 'Thông báo'}
-          </Text>
-          <Text style={styles.time}>{formatTime(timestamp)}</Text>
+    <View style={[styles.container, !read && styles.unreadContainer]}>
+      <TouchableOpacity
+        style={styles.touchable}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.iconContainer}>
+          <Feather name={icon.name} size={20} color={icon.color} />
+          {!read && <View style={styles.unreadDot} />}
         </View>
-        
-        <Text style={styles.body} numberOfLines={2}>
-          {body || 'Nội dung thông báo'}
-        </Text>
-      </View>
-    </TouchableOpacity>
+
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={[styles.title, !read && styles.unreadTitle]} numberOfLines={1}>
+              {title || 'Thông báo'}
+            </Text>
+            <Text style={styles.time}>{formatTime(timestamp)}</Text>
+          </View>
+          
+          <Text style={styles.body} numberOfLines={2}>
+            {body || 'Nội dung thông báo'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+      
+      {/* Delete button */}
+      {onDelete && (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(notification)}
+          activeOpacity={0.7}
+        >
+          <Feather name="trash-2" size={18} color="#ef4444" />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -115,13 +129,23 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    paddingVertical: scale(12),
-    paddingHorizontal: scale(16),
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   unreadContainer: {
     backgroundColor: '#eff6ff',
+  },
+  touchable: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
+  },
+  deleteButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   iconContainer: {
     width: scale(40),

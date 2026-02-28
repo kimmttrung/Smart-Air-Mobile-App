@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   SafeAreaView,
@@ -31,6 +32,7 @@ export default function NotificationScreen({ navigation }) {
     try {
       // Lấy 20 notifications mới nhất
       const history = await notificationService.getNotificationHistory(20);
+      // console.log('[NotificationScreen] Loaded notifications:', history);
       // Sort by timestamp desc (newest first). Fallback to 0 for missing/invalid timestamps.
       history.sort((a, b) => {
         const ta = a?.timestamp ? Date.parse(a.timestamp) : 0;
@@ -83,6 +85,32 @@ export default function NotificationScreen({ navigation }) {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Delete notification
+  const handleDeleteNotification = useCallback(async (notification) => {
+    Alert.alert(
+      'Xóa thông báo',
+      'Bạn có chắc muốn xóa thông báo này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Call delete API
+              await notificationService.deleteNotification(notification.id);
+              // Reload notifications
+              loadNotifications();
+            } catch (error) {
+              console.error('[NotificationScreen] Delete error:', error);
+              Alert.alert('Lỗi', 'Không thể xóa thông báo. Vui lòng thử lại.');
+            }
+          },
+        },
+      ]
+    );
+  }, [loadNotifications]);
+
   // Render header
   const renderHeader = () => (
     <View style={styles.header}>
@@ -120,6 +148,7 @@ export default function NotificationScreen({ navigation }) {
     <NotificationCard
       notification={item}
       onPress={() => handleNotificationPress(item)}
+      onDelete={handleDeleteNotification}
     />
   );
 

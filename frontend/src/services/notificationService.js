@@ -1,10 +1,13 @@
 // NotificationService - Quản lý push notifications cho SmartAir
+// Now with MongoDB backend sync support
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import api from './api';
 
 const NOTIFICATION_PREFS_KEY = '@notification_prefs';
+const USE_MONGODB_BACKEND = true; // Toggle to enable/disable MongoDB sync
 
 // Cấu hình notification handler
 Notifications.setNotificationHandler({
@@ -43,13 +46,41 @@ class NotificationService {
   }
 
   /**
+   * Get notifications from local AsyncStorage only (helper method)
+   * Does NOT fetch from MongoDB
+   */
+  async _getLocalNotifications() {
+    try {
+      const storageKey = this._getStorageKey();
+      const history = await AsyncStorage.getItem(storageKey);
+      return history ? JSON.parse(history) : [];
+    } catch (error) {
+      console.error('[NotificationService] Get local notifications error:', error);
+      return [];
+    }
+  }
+
+  /**
    * Clear notifications for current user (used on logout)
+   * Now also clears from MongoDB backend
    */
   async clearUserNotifications() {
     try {
+      // Clear from backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          await api.notifications.clearNotifications(false); // Clear all
+          console.log('[NotificationService] Cleared notifications from MongoDB for user:', this.currentUserId);
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to clear from MongoDB:', apiError.message);
+        }
+      }
+      
+      // Clear local storage
       const key = this._getStorageKey();
       await AsyncStorage.removeItem(key);
-      console.log('[NotificationService] Cleared notifications for user:', this.currentUserId);
+      console.log('[NotificationService] Cleared local notifications for user:', this.currentUserId);
+      
       this.currentUserId = null;
     } catch (error) {
       console.error('[NotificationService] Clear user notifications error:', error);
@@ -146,7 +177,11 @@ class NotificationService {
           sound: true,
           channelId,
         },
-        trigger: null, // Send immediately
+        trigger: null, // Send immediatelydata,
+        sound: true,
+        channelId,
+      
+        
       });
       console.log('[NotificationService] Local notification sent:', title);
     } catch (error) {
@@ -324,9 +359,12 @@ class NotificationService {
   /**
    * Lưu lịch sử notification với read status
    */
+  // as Now syncs to MongoDB backend
+  //  **/
   async saveNotificationHistory(type, data, title = '', body = '') {
     try {
-      const history = await this.getNotificationHistory();
+      console.log('[NotificationService] saveNotificationHistory called:', { type, title, currentUserId: this.currentUserId });
+      
       const newNotification = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         type,
@@ -337,12 +375,37 @@ class NotificationService {
         read: false, // Mặc định chưa đọc
       };
       
+      // Try to save to MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        console.log('[NotificationService] Attempting to save to MongoDB...');
+        try {
+          const backendNotif = await api.notifications.createNotification(type, data, title, body);
+          console.log('[NotificationService] ✅ Saved to MongoDB:', backendNotif);
+          // Use backend ID
+          newNotification.id = backendNotif._id || backendNotif.id;
+          newNotification.timestamp = backendNotif.timestamp;
+          
+          // Notify listeners
+          await this.notifyUnreadCountChange();
+          return newNotification;
+        } catch (apiError) {
+          console.warn('[NotificationService] ❌ Failed to save to MongoDB, falling back to local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      } else {
+        console.log('[NotificationService] Skipping MongoDB (useBackend:', USE_MONGODB_BACKEND, 'userId:', this.currentUserId, ')');
+      }
+      
+      // Fallback: Save to local AsyncStorage
+      console.log('[NotificationService] 💾 Saving to local AsyncStorage (fallback)');
+      const history = await this._getLocalNotifications(); // Use local method to avoid recursion
       history.push(newNotification);
       
       // Chỉ giữ lại 100 notification gần nhất
       const recentHistory = history.slice(-100);
       const storageKey = this._getStorageKey();
       await AsyncStorage.setItem(storageKey, JSON.stringify(recentHistory));
+      console.log('[NotificationService] Saved to local storage, total notifications:', recentHistory.length);
       
       // Notify listeners
       await this.notifyUnreadCountChange();
@@ -356,12 +419,35 @@ class NotificationService {
 
   /**
    * Lấy lịch sử notification (tối đa limit items)
+   * Now fetches from MongoDB backend
    */
   async getNotificationHistory(limit = 100) {
     try {
+      // Try to fetch from MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          const notifications = await api.notifications.getNotifications(limit, 0, false);
+          console.log(`[NotificationService] ✅ Fetched ${notifications.length} notifications from MongoDB`);
+          // Transform backend format to match local format
+          return notifications.map(n => ({
+            id: n._id || n.id,
+            type: n.type,
+            data: n.data,
+            title: n.title,
+            body: n.body,
+            timestamp: n.timestamp,
+            read: n.read
+          }));
+        } catch (apiError) {
+          console.warn('[NotificationService] ❌ Failed to fetch from MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Get from local AsyncStorage
+      console.log('[NotificationService] 💾 Fetching from local AsyncStorage (fallback)');
       const storageKey = this._getStorageKey();
       const history = await AsyncStorage.getItem(storageKey);
-      // console.log('[NotificationService] Retrieved notification history', history);
       const parsed = history ? JSON.parse(history) : [];
       
       // Trả về limit notifications mới nhất
@@ -372,11 +458,27 @@ class NotificationService {
     }
   }
 
+
   /**
    * Đánh dấu notification đã đọc
+   * Now syncs to MongoDB backend
    */
   async markNotificationAsRead(notificationId) {
     try {
+      // Try to update in MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          await api.notifications.markAsRead(notificationId);
+          console.log('[NotificationService] Marked as read in MongoDB:', notificationId);
+          await this.notifyUnreadCountChange();
+          return true;
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to mark as read in MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Update local AsyncStorage
       const storageKey = this._getStorageKey();
       const history = await AsyncStorage.getItem(storageKey);
       const parsed = history ? JSON.parse(history) : [];
@@ -399,9 +501,24 @@ class NotificationService {
 
   /**
    * Đánh dấu tất cả notifications đã đọc
+   * Now syncs to MongoDB backend
    */
   async markAllNotificationsAsRead() {
     try {
+      // Try to update in MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          const result = await api.notifications.markAllAsRead();
+          console.log('[NotificationService] Marked all as read in MongoDB:', result);
+          await this.notifyUnreadCountChange();
+          return true;
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to mark all as read in MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Update local AsyncStorage
       const storageKey = this._getStorageKey();
       const history = await AsyncStorage.getItem(storageKey);
       const parsed = history ? JSON.parse(history) : [];
@@ -419,14 +536,220 @@ class NotificationService {
 
   /**
    * Lấy số lượng notifications chưa đọc
+   * Now fetches from MongoDB backend
    */
   async getUnreadCount() {
     try {
+      // Try to fetch from MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          const stats = await api.notifications.getStats();
+          console.log('[NotificationService] Got unread count from MongoDB:', stats.unread);
+          return stats.unread;
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to get unread count from MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Count from local AsyncStorage
       const history = await this.getNotificationHistory();
       return history.filter(noti => !noti.read).length;
     } catch (error) {
       console.error('[NotificationService] Get unread count error:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Migrate local AsyncStorage notifications to MongoDB backend
+   * This should be called once after login to sync existing notifications
+   */
+  async syncLocalNotificationsToBackend() {
+    if (!USE_MONGODB_BACKEND || !this.currentUserId) {
+      console.log('[NotificationService] Skipping sync - MongoDB backend disabled or no user');
+      return { success: false, message: 'Backend sync disabled or no user' };
+    }
+
+    try {
+      console.log('[NotificationService] Starting local to MongoDB sync...');
+      
+      // Get local notifications from AsyncStorage
+      const localNotifications = await this._getLocalNotifications();
+      
+      if (localNotifications.length === 0) {
+        console.log('[NotificationService] No local notifications to sync');
+        return { success: true, synced: 0, message: 'No local notifications' };
+      }
+
+      let syncedCount = 0;
+      let failedCount = 0;
+
+      // Upload each notification to backend
+      for (const notif of localNotifications) {
+        try {
+          await api.notifications.createNotification(
+            notif.type,
+            notif.data,
+            notif.title,
+            notif.body
+          );
+          syncedCount++;
+        } catch (err) {
+          console.warn('[NotificationService] Failed to sync notification:', err.message);
+          failedCount++;
+        }
+      }
+
+      console.log(`[NotificationService] Sync complete: ${syncedCount} synced, ${failedCount} failed`);
+
+      // Clear local storage after successful sync
+      if (syncedCount > 0 && failedCount === 0) {
+        const storageKey = this._getStorageKey();
+        await AsyncStorage.removeItem(storageKey);
+        console.log('[NotificationService] Cleared local storage after successful sync');
+      }
+
+      return {
+        success: true,
+        synced: syncedCount,
+        failed: failedCount,
+        message: `Synced ${syncedCount} notifications to backend`
+      };
+    } catch (error) {
+      console.error('[NotificationService] Sync error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get local notification count (from AsyncStorage only)
+   */
+  async getLocalNotificationCount() {
+    try {
+      const notifications = await this._getLocalNotifications();
+      return notifications.length;
+    } catch (error) {
+      console.error('[NotificationService] Get local count error:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Force clear local AsyncStorage notifications
+   * Use this after successful sync to MongoDB
+   */
+  async clearLocalStorage() {
+    try {
+      const storageKey = this._getStorageKey();
+      await AsyncStorage.removeItem(storageKey);
+      console.log('[NotificationService] Local storage cleared for user:', this.currentUserId);
+      return { success: true, message: 'Local storage cleared' };
+    } catch (error) {
+      console.error('[NotificationService] Clear local storage error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get notification statistics from both local and backend
+   */
+  async getNotificationStats() {
+    const stats = {
+      local: 0,
+      backend: { total: 0, unread: 0, today: 0 },
+      useBackend: USE_MONGODB_BACKEND && this.currentUserId
+    };
+
+    try {
+      // Local count
+      stats.local = await this.getLocalNotificationCount();
+
+      // Backend stats
+      if (stats.useBackend) {
+        try {
+          stats.backend = await api.notifications.getStats();
+        } catch (err) {
+          console.warn('[NotificationService] Failed to get backend stats:', err.message);
+        }
+      }
+
+      return stats;
+    } catch (error) {
+      console.error('[NotificationService] Get stats error:', error);
+      return stats;
+    }
+  }
+
+  /**
+   * Delete a specific notification
+   * Now syncs to MongoDB backend
+   */
+  async deleteNotification(notificationId) {
+    try {
+      // Try to delete from MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          const result = await api.notifications.deleteNotification(notificationId);
+          console.log('[NotificationService] Deleted notification from MongoDB:', result);
+          await this.notifyUnreadCountChange();
+          return true;
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to delete from MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Delete from local AsyncStorage
+      const storageKey = this._getStorageKey();
+      const history = await this._getLocalNotifications();
+      const updated = history.filter(noti => noti.id !== notificationId);
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+      console.log('[NotificationService] Deleted notification from local storage');
+      
+      await this.notifyUnreadCountChange();
+      return true;
+    } catch (error) {
+      console.error('[NotificationService] Delete notification error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear notification history
+   * Now syncs to MongoDB backend
+   */
+  async clearHistory(keepUnread = false) {
+    try {
+      // Try to clear in MongoDB backend if enabled and user is logged in
+      if (USE_MONGODB_BACKEND && this.currentUserId) {
+        try {
+          const result = await api.notifications.clearNotifications(keepUnread);
+          console.log('[NotificationService] Cleared notifications in MongoDB:', result);
+          await this.notifyUnreadCountChange();
+          return true;
+        } catch (apiError) {
+          console.warn('[NotificationService] Failed to clear in MongoDB, using local storage:', apiError.message);
+          // Fall through to local storage
+        }
+      }
+      
+      // Fallback: Clear local AsyncStorage
+      const storageKey = this._getStorageKey();
+      
+      if (keepUnread) {
+        const history = await this._getLocalNotifications();
+        const unreadOnly = history.filter(noti => !noti.read);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(unreadOnly));
+      } else {
+        await AsyncStorage.removeItem(storageKey);
+      }
+      
+      await this.notifyUnreadCountChange();
+      return true;
+    } catch (error) {
+      console.error('[NotificationService] Clear history error:', error);
+      return false;
     }
   }
 
