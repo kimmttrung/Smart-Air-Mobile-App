@@ -35,6 +35,7 @@ function NotificationIcon({ focused }) {
     // Load unread count khi mount
     const loadUnreadCount = async () => {
       const count = await notificationService.getUnreadCount();
+      console.log('[NotificationIcon] Unread count:', count);
       setUnreadCount(count);
     };
     loadUnreadCount();
@@ -165,7 +166,7 @@ export default function RootTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
+          title: 'Cá nhân',
           tabBarIcon: ({ focused, color, size }) => (
             <Feather
               name="user"
@@ -174,7 +175,7 @@ export default function RootTabs() {
             />
           ),
           tabBarLabel: ({ focused }) => (
-            <SimpleTabLabel label="Profile" focused={focused} />
+            <SimpleTabLabel label="Cá nhân" focused={focused} />
           ),
         }}
       />
