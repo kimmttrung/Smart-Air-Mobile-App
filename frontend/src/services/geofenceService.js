@@ -10,7 +10,7 @@ const GEOFENCE_TASK_NAME = 'smartair-geofence-task';
 const LOCATION_TRACKING_TASK = 'smartair-location-tracking';
 const AQI_CHECK_INTERVAL = 5 * 60 * 1000; // 5 phút
 const AQI_WARNING_THRESHOLD = 100;
-const MIN_NOTIFICATION_INTERVAL = 1 * 60 * 1000; // 30 phút giữa các notification
+const MIN_NOTIFICATION_INTERVAL = 30 * 60 * 1000; // 30 phút giữa các notification
 
 // Define background task trước khi khởi tạo service
 TaskManager.defineTask(LOCATION_TRACKING_TASK, async ({ data, error }) => {
@@ -126,8 +126,8 @@ class GeofenceServiceClass {
       
       console.log('[GeofenceService] Started tracking');
       
-      // Lấy vị trí hiện tại và check AQI ngay
-      await this.checkCurrentLocationAQI();
+      // Background task sẽ tự động check AQI định kỳ (5 phút)
+      // Không gọi checkCurrentLocationAQI() ở đây để tránh duplicate notification
       
     } catch (error) {
       console.error('[GeofenceService] Start tracking error:', error);
@@ -201,7 +201,15 @@ class GeofenceServiceClass {
       const dateStr = `${y}${m}${d}`;
       // Lấy AQI tại vị trí này từ API (date as yyyyMMdd)
       console.log(`[GeofenceService] Fetching AQI for ${latitude}, ${longitude} on ${dateStr}`);
-      const aqiData = await getPM25Point(latitude, longitude, dateStr);
+      let aqiData = null;
+      
+      try {
+        aqiData = await getPM25Point(latitude, longitude, dateStr);
+      } catch (apiError) {
+        console.error('[GeofenceService] Failed to fetch AQI data:', apiError.message);
+        // Silently fail for background updates - don't crash the service
+        return;
+      }
       
       if (!aqiData || !aqiData.aqi) {
         console.log('[GeofenceService] No AQI data for this location');
@@ -209,6 +217,7 @@ class GeofenceServiceClass {
       }
 
       const aqi = aqiData.aqi;
+      const pm25 = aqiData.pm25;  
       let locationName = '';
 
       // Luôn lấy address từ reverse geocode để đảm bảo address cập nhật theo vị trí hiện tại
@@ -242,11 +251,12 @@ class GeofenceServiceClass {
 
       if (!locationName) locationName = 'vị trí hiện tại';
 
-      console.log('[GeofenceService] AQI at location:', aqi, locationName);
+      console.log('[GeofenceService] AQI at location:', aqi, pm25, locationName);
 
       // Lưu AQI vào AsyncStorage
       await AsyncStorage.setItem('@current_aqi', JSON.stringify({
         aqi,
+        pm25,
         locationName,
         latitude,
         longitude,
@@ -372,6 +382,7 @@ class GeofenceServiceClass {
       const dateNow = now.toISOString().slice(0, 10).replace(/-/g, '');
       try {
         const aqiData = await getPM25Point(latitude, longitude, dateNow);
+        console.log('[GeofenceService] getCurrentAQI fetched from API:', aqiData);
         if (!aqiData) {
           const cached = await AsyncStorage.getItem('@current_aqi');
           return cached ? JSON.parse(cached) : null;
