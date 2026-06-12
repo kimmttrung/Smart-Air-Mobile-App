@@ -34,14 +34,29 @@ def get_tif_file_path(date_str: Optional[str] = None) -> Path:
         raise FileNotFoundError(f"No GeoTIFF files found in {settings.TIF_DIR}")
     
     if date_str:
-        # Find file matching specific date
-        pattern = f"PM25_{date_str}_*.tif"
-        matching_files = list(settings.TIF_DIR.glob(pattern))
+        # Ưu tiên tìm file 1kmNRT, fallback sang 3kmNRT
+        file_1km = settings.TIF_DIR / f"PM25_{date_str}_1kmNRT.tif"
+        file_3km = settings.TIF_DIR / f"PM25_{date_str}_3kmNRT.tif"
         
-        if not matching_files:
-            raise FileNotFoundError(f"No PM2.5 file found for date {date_str}")
-        
-        return matching_files[0]
+        if file_1km.exists():
+            return file_1km
+        elif file_3km.exists():
+            logger.info(
+                f"Using 3kmNRT file for {date_str} "
+                "(1kmNRT not available)"
+            )
+            return file_3km
+        else:
+            # Fallback: tìm bất kỳ file nào có date_str
+            pattern = f"PM25_{date_str}_*.tif"
+            matching_files = list(settings.TIF_DIR.glob(pattern))
+            
+            if not matching_files:
+                raise FileNotFoundError(
+                    f"No PM2.5 file found for date {date_str}"
+                )
+            
+            return matching_files[0]
     else:
         # Return latest file
         tif_files.sort(reverse=True)

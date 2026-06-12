@@ -157,14 +157,21 @@ export const fetchWeatherData = async (lat, lon, date = null) => {
  * @returns {Promise<Object>} Location data with name, address, district, city
  */
 export const reverseGeocode = async (lat, lon) => {
+  // Add timeout handling with AbortController (5 seconds)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=vi`;
     
     const response = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'SmartAir-Mobile/1.0',
       },
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -198,7 +205,18 @@ export const reverseGeocode = async (lat, lon) => {
       city: state || city,
     };
   } catch (error) {
-    console.error('Error reverse geocoding:', error);
+    clearTimeout(timeoutId);
+    
+    // Handle timeout specifically
+    if (error.name === 'AbortError') {
+      console.warn('⚠️ Reverse geocoding timeout: Request took longer than 5 seconds');
+    } else if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
+      console.warn('⚠️ Reverse geocoding network error: No internet connection or server unreachable');
+    } else {
+      console.warn('⚠️ Reverse geocoding error:', error.message || error);
+    }
+    
+    // Return fallback data - không crash app
     return {
       name: 'Điểm được chọn',
       address: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,

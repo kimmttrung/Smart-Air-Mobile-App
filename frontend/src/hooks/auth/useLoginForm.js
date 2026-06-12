@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useState } from 'react';
 import authService from '../../services/authService';
+import notificationService from '../../services/notificationService';
 
 /**
  * Manage login form state, validation, and submission side-effects.
@@ -37,6 +38,12 @@ export default function useLoginForm({ onSuccess } = {}) {
         username: result.user?.username || null,
       };
       await AsyncStorage.setItem('auth', JSON.stringify(authData));
+      
+      // Set user ID for notification service
+      if (authData.uid) {
+        notificationService.setUserId(authData.uid);
+      }
+      
       if (onSuccess) onSuccess(authData);
     } catch (err) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');

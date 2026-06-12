@@ -97,7 +97,7 @@ async def save_location(
         )
     
     # Create location record
-    
+    vn_tz = timezone(timedelta(hours=7))  # UTC+7 Vietnam timezone
     location_doc = {
         "user_id": payload.user_id,
         "latitude": payload.latitude,
@@ -105,7 +105,7 @@ async def save_location(
         "aqi": payload.aqi,
         "pm25": payload.pm25,
         "address": payload.address,
-        "timestamp": datetime.now(timezone.utc)
+        "timestamp": datetime.now(vn_tz)  # Lưu theo giờ Việt Nam
     }
     
     # Insert into database
@@ -149,7 +149,7 @@ async def get_location_history(
     
     # Calculate date range
     vn_tz = timezone(timedelta(hours=7))  # UTC+7 Vietnam timezone
-    cutoff_date = datetime.now(vn_tz) - timedelta(days=days)  # convert to UTC
+    cutoff_date = datetime.now(vn_tz) - timedelta(days=days)  # Giờ Việt Nam
     
     # Query database
     cursor = db.locations.find({
@@ -200,7 +200,7 @@ async def get_user_location_history(
     
     # Calculate date range
     vn_tz = timezone(timedelta(hours=7))  # UTC+7 Vietnam timezone
-    cutoff_date = datetime.now(vn_tz) - timedelta(days=days)
+    cutoff_date = datetime.now(vn_tz) - timedelta(days=days)  # Giờ Việt Nam
     
     # Query database
     cursor = db.locations.find({
@@ -246,13 +246,12 @@ async def get_location_stats(
     now_local_for_cutoff = datetime.now(vn_tz)
     today_local_for_cutoff = now_local_for_cutoff.date()
     start_local_date = today_local_for_cutoff - timedelta(days=days)
-    cutoff_local = datetime(start_local_date.year, start_local_date.month, start_local_date.day, 0, 0, 0, tzinfo=vn_tz)
-    cutoff_utc = cutoff_local.astimezone(timezone.utc)
-    print('[get_location_stats] cutoff_local:', cutoff_local, 'cutoff_utc:', cutoff_utc)
-    # Get all records for the period (DB stores timestamps in UTC)
+    cutoff_vn = datetime(start_local_date.year, start_local_date.month, start_local_date.day, 0, 0, 0, tzinfo=vn_tz)
+    print('[get_location_stats] cutoff_vn:', cutoff_vn)
+    # Get all records for the period (DB stores timestamps in Vietnam timezone UTC+7)
     cursor = db.locations.find({
         "user_id": user_id,
-        "timestamp": {"$gte": cutoff_utc}
+        "timestamp": {"$gte": cutoff_vn}
     })
    
     locations = await cursor.to_list(length=10000)
@@ -387,21 +386,18 @@ async def get_stats_for_day(
     db = get_database()
     user_id = current_user["user_id"]
 
-    # Parse date and compute VN-local start/end then convert to UTC for DB query
+    # Parse date and compute VN-local start/end (DB stores in Vietnam timezone)
     try:
         year, month, day = map(int, date.split('-'))
         vn_tz = timezone(timedelta(hours=7))
-        start_local = datetime(year, month, day, 0, 0, 0, tzinfo=vn_tz)
-        end_local = start_local + timedelta(days=1)
-        # convert to UTC because stored timestamps use UTC
-        start_utc = start_local.astimezone(timezone.utc)
-        end_utc = end_local.astimezone(timezone.utc)
+        start_vn = datetime(year, month, day, 0, 0, 0, tzinfo=vn_tz)
+        end_vn = start_vn + timedelta(days=1)
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format, expected YYYY-MM-DD")
 
     cursor = db.locations.find({
         "user_id": user_id,
-        "timestamp": {"$gte": start_utc, "$lt": end_utc}
+        "timestamp": {"$gte": start_vn, "$lt": end_vn}
     })
 
     records = await cursor.to_list(length=10000)
@@ -472,7 +468,8 @@ async def clear_location_history(
     query = {"user_id": user_id}
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        vn_tz = timezone(timedelta(hours=7))
+        cutoff_date = datetime.now(vn_tz) - timedelta(days=days)
         query["timestamp"] = {"$lt": cutoff_date}
     
     # Delete records

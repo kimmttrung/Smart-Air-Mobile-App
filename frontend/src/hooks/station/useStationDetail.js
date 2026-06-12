@@ -34,8 +34,8 @@ export default function useStationDetail(station) {
         }
 
         const data = await response.json();
-        console.log('✅ Forecast data received:', data.forecast?.length || 0, 'days');
-        console.log('📊 Days with data:', data.daysWithData, '/', data.totalDays);
+        // console.log('✅ Forecast data received:', data.forecast?.length || 0, 'days');
+        // console.log('📊 Days with data:', data.daysWithData, '/', data.totalDays);
 
         if (data.forecast && data.forecast.length > 0) {
           let weeklyData = data.forecast.map(item => ({
@@ -72,8 +72,8 @@ export default function useStationDetail(station) {
             weeklyData[0] = {
               ...weeklyData[0], // Giữ date, label, dateKey
               // Ưu tiên AQI và PM2.5 từ CEM (real-time)
-              aqi: station.aqi || station.baseAqi || weeklyData[0].aqi,
-              pm25: station.pm25 || weeklyData[0].pm25,
+              aqi:  station.aqi || weeklyData[0].aqi ||  station.baseAqi || null,
+              pm25:  station.pm25 || weeklyData[0].pm25 || null,
               // Ưu tiên temp/humidity từ forecast (Open-Meteo reliable hơn)
               temp: weeklyData[0].temp || station.temp,
               humidity: weeklyData[0].humidity || station.humidity,

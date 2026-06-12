@@ -118,7 +118,7 @@ export default function AnalyticExposureScreen() {
   // Initial load - only basic history data
   useEffect(() => {
     if (!historyLoaded) {
-      loadHistoryBasic();
+    loadHistoryBasic();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Chỉ chạy 1 lần khi mount
@@ -181,9 +181,9 @@ export default function AnalyticExposureScreen() {
           <Text style={styles.headerTitle}>Phơi nhiễm cá nhân</Text>
           <Text style={styles.headerSubtitle}>Phân tích chất lượng không khí theo ngày</Text>
         </View>
-        <Pressable onPress={() => setShowStatsInfo(true)} style={{ marginRight: 8, alignSelf: 'flex-start' }}>
-          <Ionicons name="information-circle-outline" size={25} color="#2563eb" />
-        </Pressable>
+           <Pressable onPress={() => setShowStatsInfo(true)} style={{ marginRight: 8, alignSelf: 'flex-start' }}>
+             <Ionicons name="information-circle-outline" size={25} color="#2563eb" />
+          </Pressable>
       </View>
 
       {/* Tab Bar */}

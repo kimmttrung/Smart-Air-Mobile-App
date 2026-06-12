@@ -103,11 +103,11 @@ export default function ExposureChart({
                       {
                         height: barHeight,
                         backgroundColor: getAQIColor(adjustedAqi),
-                        opacity: isSelected ? 1 : 0.5,
+                        opacity: isSelected ? 1 : 0.4,
                         transform: [{ scale: isSelected ? 1.15 : 1 }],
-                        borderWidth: isToday ? 2 : 0,
-                        borderColor: isToday ? '#2563eb' : 'transparent',
-                        shadowColor: isToday ? '#2563eb' : isSelected ? getAQIColor(adjustedAqi) : 'transparent',
+                        borderWidth: isToday ? 2 : 1,
+                        borderColor: isToday ? '#2563eb' : '#ffffffff',
+                        shadowColor: isToday ? '#2563eb' : isSelected ? getAQIColor(adjustedAqi) : '#ffffffff',
                         shadowOpacity: isToday ? 0.4 : isSelected ? 0.3 : 0,
                         shadowRadius: isToday ? 6 : 4,
                         shadowOffset: { width: 0, height: isToday ? 3 : 2 },
@@ -236,9 +236,9 @@ const styles = StyleSheet.create({
   },
   barLabelTodayTag: {
     marginTop: 1,
-    fontSize: scaleFont(7),
+    fontSize: scaleFont(6),
     color: '#2563eb',
-    fontWeight: '700',
+    fontWeight: '900',
     textTransform: 'uppercase',
   },
 });

@@ -37,8 +37,9 @@ export default function DetailStationScreen() {
 
   // Hooks
   const { realtimeData, loading } = useStationDetail(station);
+  // console.log('📊 DetailStationCScreen realtimeData:', realtimeData);
   const data = useStationData(station, realtimeData, userGroup, selectedDay);
-
+  // console.log('📊 DetailStationCScreen display data:', data);
   // Sử dụng realtime data nếu có, không thì fallback về mock data
   const weekly = useMemo(() => {
     if (realtimeData?.weekly && realtimeData.weekly.length > 0) {
@@ -94,13 +95,13 @@ export default function DetailStationScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={styles.backIcon}>{'‹'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <LocationChip
           date={displayTs.date}
@@ -174,15 +175,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(196, 138, 138, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    // zIndex: 10,
   },
   backIcon: {
     color: 'rgba(0, 0, 0, 0.62)',
     fontSize: scaleFont(40),
-    marginTop: -2,
+    lineHeight: scaleFont(20),
+    textAlign: 'center',
     fontWeight: '300',
   },
   mainSection: {

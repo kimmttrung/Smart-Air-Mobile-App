@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -6,28 +5,24 @@ import {
   Alert,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { config } from '../../config';
-import { AqiBar } from '../components/ui';
 import {
-  StationDetailSheet,
-  MapTopBar,
-  MapLayerControls,
-  MapWebView,
-  MapSearchDropdown,
   MapDayDropdown,
+  MapLayerControls,
+  MapSearchDropdown,
+  MapTopBar,
+  MapWebView,
+  StationDetailSheet,
 } from '../components/map';
-import { useLocationTracking } from '../hooks/map/useLocationTracking';
-import useMapSearch from '../hooks/map/useMapSearch';
+import { AqiBar } from '../components/ui';
+import { moderateScale, scaleFont } from '../constants/responsive';
 import useAutoSaveUserLocation from '../hooks/map/useAutoSaveUserLocation';
-import useMapStations from '../hooks/map/useMapStations';
+import { useLocationTracking } from '../hooks/map/useLocationTracking';
 import useMapInteractions from '../hooks/map/useMapInteractions';
+import useMapSearch from '../hooks/map/useMapSearch';
+import useMapStations from '../hooks/map/useMapStations';
 import { BASE_URL } from '../services/api';
 import { fetchWeatherData } from '../services/mapService';
 import {
@@ -35,9 +30,8 @@ import {
   getAQIColor,
   getHealthAdvice
 } from '../utils';
-import { generateLeafletHTML } from '../utils/mapHtmlUtils';
 import { getAQICategory } from '../utils/aqiUtils';
-import { scaleFont, moderateScale } from '../constants/responsive';
+import { generateLeafletHTML } from '../utils/mapHtmlUtils';
 const CONTROL_HEIGHT = 40;
 
 export default function MapScreen() {
@@ -254,26 +248,37 @@ export default function MapScreen() {
               }
 
               if (fullStation) {
-                // Use full data from CEM API directly - don't recalculate AQI
-                // The AQI from cemStations is already correct from the API
-                // But fetch weather data (temp, humidity, windSpeed, precipitation) from Open-Meteo
-                const lon = fullStation.lon || fullStation.lng;
-                fetchWeatherData(fullStation.lat, lon, selectedDay?.isoDate)
+                // Merge point-level data (payload) into fullStation so that
+                // point-specific AQI/pm25/name override the station defaults.
+                const payload = data.payload || {};
+                const payloadAqi = payload.aqi ?? payload.baseAqi ?? payload.pointAqi;
+                const mergedStation = {
+                  ...fullStation,
+                  // prefer payload values when available
+                  ...(payloadAqi !== undefined && payloadAqi !== null ? { aqi: payloadAqi } : {}),
+                  ...(payload.pm25 !== undefined && payload.pm25 !== null ? { pm25: payload.pm25 } : {}),
+                  ...(payload.name ? { name: payload.name } : {}),
+                  // keep any other payload props (e.g., timestamp)
+                  ...payload,
+                };
+
+                const lon = mergedStation.lon || mergedStation.lng || fullStation.lon || fullStation.lng;
+                fetchWeatherData(mergedStation.lat || fullStation.lat, lon, selectedDay?.isoDate)
                   .then((weatherData) => {
-                  setSelectedStation({
-                    ...fullStation,
-                    temp: weatherData.temp,
-                    humidity: weatherData.humidity,
-                    windSpeed: weatherData.windSpeed,
-                    precipitation: weatherData.precipitation,
-                    weatherCode: weatherData.weatherCode,
-                  });
+                    setSelectedStation({
+                      ...mergedStation,
+                      temp: weatherData.temp,
+                      humidity: weatherData.humidity,
+                      windSpeed: weatherData.windSpeed,
+                      precipitation: weatherData.precipitation,
+                      weatherCode: weatherData.weatherCode,
+                    });
                   })
                   .catch((err) => {
-                  console.error('Error fetching weather for station:', err);
-                  // Still show station without weather data
-                  setSelectedStation(fullStation);
-                });
+                    console.error('Error fetching weather for station:', err);
+                    // Still show station without weather data
+                    setSelectedStation(mergedStation);
+                  });
               } else {
                 // Fallback to basic data from WebView
                 setSelectedStation(data.payload);
@@ -292,6 +297,8 @@ export default function MapScreen() {
           }
         }}
       />
+
+      
 
       {/* Thanh control trên cùng: chọn ngày + GPS */}
       <MapTopBar
@@ -524,6 +531,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+  
   dayScrollContent: {
     flexDirection: 'row',
   },

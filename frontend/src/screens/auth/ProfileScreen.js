@@ -138,6 +138,15 @@ export default function ProfileScreen() {
         )}
 
         <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => navigation.navigate('NotificationSettings')}
+          activeOpacity={0.8}
+        >
+          <Feather name="bell" size={20} color="#ffffff" />
+          <Text style={styles.notificationButtonText}>Cài đặt Thông báo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
           activeOpacity={0.8}
@@ -357,13 +366,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
   },
+  notificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    marginHorizontal: 16,
+    marginTop: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  notificationButtonText: {
+    fontSize: scaleFont(16),
+    fontWeight: '700',
+    color: '#ffffff',
+    marginLeft: 8,
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ef4444',
     marginHorizontal: 16,
-    marginTop: 32,
+    marginTop: 12,
     paddingVertical: 16,
     borderRadius: 16,
     shadowColor: '#ef4444',

@@ -14,6 +14,7 @@ export default function HistoryTab({
   onReload,
 }) {
   if (loading || !historyLoaded) {
+    // console.log('HistoryTab: loading history data...', { loading, historyLoaded });
     return (
       <View style={styles.loadingTabContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
@@ -226,9 +227,9 @@ function DayStatsCard({ dayStats }) {
               >
                 {addr}
               </Text>
-              <Text style={{ color: '#64748b', fontSize: scaleFont(13), flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
+              {/* <Text style={{ color: '#64748b', fontSize: scaleFont(13), flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
                 {count} lần
-              </Text>
+              </Text> */}
             </View>
           ))}
         </View>

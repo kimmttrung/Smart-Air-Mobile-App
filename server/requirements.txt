@@ -38,7 +38,7 @@ python-dateutil==2.9.0.post0
 python-multipart==0.0.20
 rasterio==1.4.3
 requests>=2.31.0
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 rio-tiler==7.9.2
 simplejson==3.20.2
 six==1.17.0
@@ -54,14 +54,16 @@ pymongo==4.6.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-python-multipart==0.0.20
 email-validator>=2.0.0
 
 # Testing
 pytest>=8.0.0
 pytest-cov>=4.1.0
-
-# Testing
-pytest>=8.0.0
-pytest-cov>=4.1.0
 httpx>=0.28.0
+
+# MinIO for downloading TIF files
+minio
+dotenv
+
+# Scheduler for automatic download
+schedule>=1.2.0

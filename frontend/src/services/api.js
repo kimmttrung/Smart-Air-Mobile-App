@@ -47,16 +47,67 @@ try {
 const DEFAULT_FALLBACK = 'http://10.0.2.2:8000';
 const DEPLOY_URL = 'https://smart-air-mobile-app.onrender.com'; // Thay bằng Vercel URL sau khi deploy
 // Thay YOUR_WIFI_IP bằng IP máy tính của bạn (xem bằng lệnh ipconfig)
-const LOCAL_NETWORK_URL = 'http://192.168.1.8:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
-// const LOCAL_NETWORK_URL = 'http://118.70.181.146:58888'; // VD:
+const LOCAL_NETWORK_URL = 'http://192.168.1.11:8000'; // VD: http://192.168.1.10:8000, http://10.0.0.5:8000, etc.
+// const LOCAL_NETWORK_URL = 'http://10.11.49.207:8000'; // VD:
+// const LOCAL_NETWORK_URL = ''; 
 const BASE_URL = LOCAL_NETWORK_URL || DEPLOY_URL || ENV_BASE || detectedBackendUrl || CONFIG_BASE || DEFAULT_FALLBACK;
 
 
-// console.warn(`[api.js] BASE_URL: ${BASE_URL}`);
-// console.warn(`  priority: deploy=${DEPLOY_URL || 'none'} > env=${ENV_BASE || 'none'} > detected=${detectedBackendUrl || 'none'} > config=${CONFIG_BASE || 'none'} > fallback=${DEFAULT_FALLBACK}`);
+console.warn(`[api.js] 🌐 BASE_URL: ${BASE_URL}`);
+console.warn(`[api.js] Priority: local=${LOCAL_NETWORK_URL || 'none'} > deploy=${DEPLOY_URL || 'none'} > env=${ENV_BASE || 'none'} > detected=${detectedBackendUrl || 'none'} > config=${CONFIG_BASE || 'none'} > fallback=${DEFAULT_FALLBACK}`);
 
 // Export BASE_URL for use in other components (like MapWebView)
 export { BASE_URL };
+
+// Helper function to check server connectivity
+export const checkServerConnection = async () => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
+    const response = await fetch(`${BASE_URL}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      console.warn(`[api.js] ✅ Server is reachable at ${BASE_URL}`);
+      return { success: true, message: 'Server connected' };
+    } else {
+      console.warn(`[api.js] ⚠️ Server responded with status ${response.status}`);
+      return { success: false, message: `Server error: ${response.status}` };
+    }
+  } catch (error) {
+    console.error(`[api.js] ❌ Cannot connect to server at ${BASE_URL}:`, error.message);
+    return { 
+      success: false, 
+      message: `Cannot reach server at ${BASE_URL}. Please check:\n1. Backend is running\n2. IP address is correct\n3. Phone and server are on the same network` 
+    };
+  }
+};
+
+// Helper function to decode JWT and check expiration
+const isTokenExpired = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp * 1000; // Convert to milliseconds
+    const now = Date.now();
+    const isExpired = now >= exp;
+    if (isExpired) {
+      const expiredAgo = Math.floor((now - exp) / 1000 / 60); // minutes
+      console.warn(`[api.js] Token expired ${expiredAgo} minutes ago`);
+    } else {
+      const expiresIn = Math.floor((exp - now) / 1000 / 60); // minutes
+      console.warn(`[api.js] Token expires in ${expiresIn} minutes`);
+    }
+    return isExpired;
+  } catch (err) {
+    console.warn(`[api.js] Failed to decode token:`, err.message);
+    return false; // If we can't decode, assume it's not expired
+  }
+};
 
 const api = {
   BASE_URL,
@@ -74,15 +125,27 @@ const api = {
       if (!authStr) throw new Error('No auth token found. Please login first.');
       
       const auth = JSON.parse(authStr);
+      console.warn(`[api.js] saveLocation: Auth object keys:`, Object.keys(auth));
       const token = auth.token || auth.access_token;
-      if (!token) throw new Error('No JWT token found in auth data.');
+      if (!token) {
+        console.error(`[api.js] saveLocation: No token found. Auth data:`, auth);
+        throw new Error('No JWT token found in auth data.');
+      }
+      
+      console.warn(`[api.js] saveLocation: Using token (first 20 chars): ${token.substring(0, 20)}...`);
+      
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.error(`[api.js] saveLocation: Token is EXPIRED - user needs to login again`);
+        throw new Error('Your session has expired. Please login again.');
+      }
 
       const res = await fetch(url, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-   
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ user_id: userId, lat, lng, aqi, pm25, address })
       });
@@ -90,6 +153,11 @@ const api = {
       console.warn(`[api.js] saveLocation: Response status ${res.status}`);
       if (!res.ok) {
         const text = await res.text();
+        if (res.status === 401) {
+          console.error(`[api.js] saveLocation: 401 Unauthorized - Token may be expired or invalid`);
+          console.error(`[api.js] saveLocation: Response body:`, text);
+          throw new Error(`Authentication failed. Please login again. ${text}`);
+        }
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
       const data = await res.json();
@@ -127,6 +195,7 @@ const api = {
       }
       const data = await res.json();
       console.warn(`[api.js] getLocationHistory: Success, got ${data.length} records`);
+      console.warn(`[api.js] getLocationHistory: Sample record:`, data || 'No records');
       return data;
     } catch (err) {
       console.error(`[api.js] getLocationHistory: Error: ${err.message}`);
@@ -169,7 +238,7 @@ const api = {
   // GET /location/stats/day?date=YYYY-MM-DD
   getLocationStatsForDay: async (date) => {
     const url = `${BASE_URL}/location/stats/day?date=${encodeURIComponent(date)}`;
-    console.log(`[api.js] getLocationStatsForDay -> GET ${url}`);
+    // console.log(`[api.js] getLocationStatsForDay -> GET ${url}`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -212,7 +281,7 @@ const api = {
   // GET /pm25/forecast?lat=21.0285&lon=105.8542&days=7
   getPM25Forecast: async (lat, lon, days = 7) => {
     const url = `${BASE_URL}/pm25/forecast?lat=${lat}&lon=${lon}&days=${days}`;
-    console.warn(`[api.js] getPM25Forecast: GET from ${url}`);
+    // console.warn(`[api.js] getPM25Forecast: GET from ${url}`);
     try {
       const res = await fetch(url, {
         headers: {
@@ -224,7 +293,7 @@ const api = {
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
       const data = await res.json();
-      console.warn(`[api.js] getPM25Forecast: Success, got ${data.forecast?.length || 0} days`);
+      // console.warn(`[api.js] getPM25Forecast: Success, got ${data.forecast?.length || 0} days`);
       return data;
     } catch (err) {
       console.error(`[api.js] getPM25Forecast: Error: ${err.message}`);
@@ -233,8 +302,9 @@ const api = {
   },
 
   // GET /pm25/point?lon=105.8542&lat=21.0285&date=20241206
-  getPM25Point: async (lat, lon, date = null) => {
+  getPM25Point: async (lat, lon, date = null, retries = 2) => {
     let dateParam = '';
+    console.warn(`[api.js] getPM25Point: lat=${lat}, lon=${lon}, date=${date}`);
     if (date) {
       let dateStr = date;
       if (date instanceof Date) {
@@ -252,35 +322,80 @@ const api = {
     const url = `${BASE_URL}/pm25/point?lon=${lon}&lat=${lat}${dateParam}`;
     console.warn(`[api.js] getPM25Point: GET from ${url}`);
     
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.warn(`[api.js] getPM25Point: Retry attempt ${attempt}/${retries}`);
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s
+        
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        
+        const data = await res.json();
+        console.warn(`[api.js] getPM25Point: Success, AQI=${data.aqi}`);
+        return data;
+      } catch (err) {
+        const isLastAttempt = attempt === retries;
+        
+        if (err.name === 'AbortError') {
+          console.error(`[api.js] getPM25Point: Timeout after 8 seconds (attempt ${attempt + 1})`);
+          if (isLastAttempt) {
+            throw new Error(`Server timeout. Please check if backend is running at ${BASE_URL}`);
+          }
+        } else if (err.message.includes('Network request failed')) {
+          console.error(`[api.js] getPM25Point: Network error (attempt ${attempt + 1}): ${err.message}`);
+          if (isLastAttempt) {
+            throw new Error(`Cannot connect to server at ${BASE_URL}. Make sure the backend is running and the IP address is correct.`);
+          }
+        } else {
+          console.error(`[api.js] getPM25Point: Error (attempt ${attempt + 1}): ${err.message}`);
+          if (isLastAttempt) {
+            throw err;
+          }
+        }
+      }
+    }
+  },
+
+  // GET AQI by location (lat, lon) - For Geofencing
+  getAQIByLocation: async (lat, lon) => {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      // Get today's date as yyyyMMdd
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${y}${m}${d}`;
       
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-      
-      const data = await res.json();
-      console.warn(`[api.js] getPM25Point: Success, AQI=${data.aqi}`);
-      return data;
+      // Reuse getPM25Point for AQI data with today's date
+      const data = await api.getPM25Point(lat, lon, dateStr);
+      return {
+        aqi: data.aqi,
+        pm25: data.pm25,
+        locationName: data.location || 'Unknown',
+      };
     } catch (err) {
-      if (err.name === 'AbortError') {
-        console.error(`[api.js] getPM25Point: Timeout after 5 seconds`);
-        throw new Error('Timeout: Backend không phản hồi trong 5 giây');
-      }
-      console.error(`[api.js] getPM25Point: Error: ${err.message}`);
+      console.error(`[api.js] getAQIByLocation: Error: ${err.message}`);
       throw err;
     }
   }
@@ -426,4 +541,266 @@ api.auth = {
   }
 };
 
+// Notification API methods
+api.notifications = {
+  /**
+   * Get notifications for current user
+   */
+  getNotifications: async (limit = 100, skip = 0, unreadOnly = false) => {
+    const url = `${BASE_URL}/notifications?limit=${limit}&skip=${skip}&unread_only=${unreadOnly}`;
+    console.log(`[api.js] notifications.getNotifications -> GET ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.getNotifications: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Create a new notification (save to backend)
+   */
+  createNotification: async (type, data, title, body) => {
+    const url = `${BASE_URL}/notifications`;
+    console.log(`[api.js] notifications.createNotification -> POST ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ type, data, title, body })
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.createNotification: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Get notification statistics
+   */
+  getStats: async () => {
+    const url = `${BASE_URL}/notifications/stats`;
+    console.log(`[api.js] notifications.getStats -> GET ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.getStats: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Mark notification as read
+   */
+  markAsRead: async (notificationId) => {
+    const url = `${BASE_URL}/notifications/${notificationId}/read`;
+    console.log(`[api.js] notifications.markAsRead -> PATCH ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.markAsRead: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Mark all notifications as read
+   */
+  markAllAsRead: async () => {
+    const url = `${BASE_URL}/notifications/read-all`;
+    console.log(`[api.js] notifications.markAllAsRead -> PATCH ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.markAllAsRead: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Clear notifications
+   */
+  clearNotifications: async (keepUnread = false, olderThanDays = null) => {
+    let url = `${BASE_URL}/notifications/clear?keep_unread=${keepUnread}`;
+    if (olderThanDays) {
+      url += `&older_than_days=${olderThanDays}`;
+    }
+    console.log(`[api.js] notifications.clearNotifications -> DELETE ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.clearNotifications: Error: ${err.message}`);
+      throw err;
+    }
+  },
+
+  /**
+   * Delete specific notification
+   */
+  deleteNotification: async (notificationId) => {
+    const url = `${BASE_URL}/notifications/${notificationId}`;
+    console.log(`[api.js] notifications.deleteNotification -> DELETE ${url}`);
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const authStr = await AsyncStorage.getItem('auth');
+      if (!authStr) throw new Error('No auth token found. Please login first.');
+      
+      const auth = JSON.parse(authStr);
+      const token = auth.token || auth.access_token;
+      if (!token) throw new Error('No JWT token found in auth data.');
+
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      return res.json();
+    } catch (err) {
+      console.error(`[api.js] notifications.deleteNotification: Error: ${err.message}`);
+      throw err;
+    }
+  }
+};
+
 export default api;
+
+// Export individual functions for direct import
+export const { getAQIByLocation, getPM25Point, getPM25Forecast, saveLocation, getLocationHistory, getLocationStats } = api;

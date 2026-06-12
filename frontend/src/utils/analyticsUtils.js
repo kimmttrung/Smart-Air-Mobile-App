@@ -319,7 +319,7 @@ export const processLocationHistory = async (historyData, forceRefresh = false, 
             note: `Bạn đã nhiều lần đến đây ngày ${meta.pastDateStr}`,
           });
 
-          console.log(`[Forecast Day +${meta.index}] ${shortLocation}, AQI: ${dayForecast.aqi}`);
+          // console.log(`[Forecast Day +${meta.index}] ${shortLocation}, AQI: ${dayForecast.aqi}`);
         }
       } else {
         const meta = forecastMeta[idx];

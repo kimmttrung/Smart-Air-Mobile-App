@@ -10,13 +10,13 @@ export function LocationChip({ date, time, stationName }) {
     <View style={styles.locationChipWrapper}>
       <View style={styles.locationChip}>
         <Text style={styles.locationText}>
-          Hôm nay - {date}
+          Ngày {date}
         </Text>
-        {time !== '' && (
+        {/* {time !== '' && (
           <Text style={styles.locationText}>
             {time}
           </Text>
-        )}
+        )} */}
         <Text style={styles.locationText}>
           {stationName || 'Trạm quan trắc'}
         </Text>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     gap: 4,
-    width: '50%',
+    width: '70%',
   },
   locationText: {
     fontSize: scaleFont(13),

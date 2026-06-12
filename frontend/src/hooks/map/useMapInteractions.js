@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { fetchPM25DataFromBackend, fetchWeatherData, reverseGeocode } from '../../services/mapService';
@@ -25,10 +25,23 @@ export default function useMapInteractions({
   webviewRef,
 }) {
   const [locating, setLocating] = useState(false);
+  // Rate limiting: giới hạn click 1 lần/1 giây trên MapScreen
+  const lastClickTimeRef = useRef(0);
+  const CLICK_THROTTLE_MS = 3000; // 1 giây
 
   const handleMapClick = useCallback(
     async (lat, lon, pointId = 'custom-point') => {
       try {
+        // Rate limiting: giới hạn tất cả các click 1 lần/1 giây
+        const now = Date.now();
+        const timeSinceLastClick = now - lastClickTimeRef.current;
+        
+        if (timeSinceLastClick < CLICK_THROTTLE_MS) {
+          console.log(`⏱️ Click throttled: ${timeSinceLastClick}ms < ${CLICK_THROTTLE_MS}ms`);
+          return; // Bỏ qua click này
+        }
+        
+        lastClickTimeRef.current = now;
         // Validate coordinates before making API calls
         const validLat = parseFloat(lat);
         const validLon = parseFloat(lon);

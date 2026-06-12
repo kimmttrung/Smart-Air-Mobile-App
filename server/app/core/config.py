@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # To expose the server on all interfaces (e.g., for production), set HOST to "0.0.0.0" via environment variable or config file.
     # WARNING: Binding to "0.0.0.0" exposes the server on all network interfaces and may be a security risk in production.
     HOST: str = "127.0.0.1"
-    PORT: int = 8888
+    PORT: int = 8000
     DEBUG: bool = True
     RELOAD: bool = True
     
@@ -58,7 +58,14 @@ class Settings(BaseSettings):
     SECRET_KEY: str  # Must be set in .env file
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30 * 24 * 60  # 30 days
-    
+
+    # MinIO Settings (load from .env)
+    MINIO_ENDPOINT: str = "112.137.129.244:9001"
+    MINIO_ACCESS_KEY: str = ""  # Must be set in .env file
+    MINIO_SECRET_KEY: str = ""  # Must be set in .env file
+    MINIO_BUCKET: str = "nrt-sci-pm25-map-daily-1km"
+    MINIO_SECURE: bool = False
+
     class Config:
         case_sensitive = True
         env_file = ".env"

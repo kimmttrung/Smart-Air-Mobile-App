@@ -57,9 +57,6 @@ TIF_DIR=data/tif_files
 ```bash
 # Method 1: Using run.py
 python run.py
-
-# Method 2: Using uvicorn directly
-uvicorn app.main:app --reload --port 8000
 ```
 
 ### API Endpoints

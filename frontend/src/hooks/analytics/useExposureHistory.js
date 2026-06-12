@@ -106,7 +106,7 @@ export default function useExposureHistory(getLocationHistory, onUserLocationUpd
     const fetchStats = async () => {
       try {
         setDayStats(null);
-        console.log('[useExposureHistory] Loading day stats for date:', targetDate);
+        // console.log('[useExposureHistory] Loading day stats for date:', targetDate);
         const stats = await api.getLocationStatsForDay(targetDate);
         if (!cancelled) {
           setDayStats(stats);
@@ -126,10 +126,8 @@ export default function useExposureHistory(getLocationHistory, onUserLocationUpd
     setLoading?.(true);
     try {
       await loadHistoryBasic();
-      if (overviewLoaded && loadOverviewData) {
-        // Overview sẽ tự reload khi historyData thay đổi
-        setHistoryLoaded(false);
-      }
+      // Don't reset historyLoaded here - it causes flickering
+      // Overview will auto-reload when historyData changes
     } finally {
       setLoading?.(false);
     }

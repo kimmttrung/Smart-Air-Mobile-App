@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import DetailStationScreen from '../screens/DetailStationScreen';
+import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import IntroScreen from '../screens/auth/IntroScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -74,7 +75,32 @@ export default function RootStack() {
       <Stack.Screen
         name="DetailStation"
         component={DetailStationScreen}
-        options={{ headerShown: false }}
+        options={{ 
+          headerShown: true,
+           title: 'Chi tiết trạm ',
+          headerStyle: {
+            backgroundColor: '#4CAF50',
+          },
+          headerTintColor: '#f3f3f3ff',
+        }}
+      />
+
+      {/* Màn hình cài đặt thông báo */}
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettingsScreen}
+        options={{ 
+          headerShown: true,
+          title: 'Cài đặt Thông báo',
+          headerStyle: {
+            backgroundColor: '#4CAF50',
+            elevation: 0,
+            shadowOpacity: 0, 
+          },
+          headerShadowVisible: false,
+          headerTintColor: '#f3f3f3ff',
+          headerTopInsetEnabled: false,
+        }}
       />
     </Stack.Navigator>
   );

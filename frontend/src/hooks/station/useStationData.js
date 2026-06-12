@@ -6,7 +6,7 @@ import { getHealthAdvice } from '../../utils/mapUtils';
  */
 export default function useStationData(station, realtimeData, userGroup, selectedDay) {
   const data = useMemo(() => {
-    console.log('🔍 Recalculating data with userGroup:', userGroup);
+    // console.log('🔍 Recalculating data with userGroup:', userGroup);
     
     if (!station) {
       return {
@@ -26,7 +26,7 @@ export default function useStationData(station, realtimeData, userGroup, selecte
     if (selectedDay && realtimeData?.weekly) {
       dayData = realtimeData.weekly.find(d => d.dateKey === selectedDay.isoDate);
     }
-    console.log('🔍 selectedDay data found:', dayData);
+    // console.log('🔍 selectedDay data found:', dayData);
     
     // Nếu không có selectedDay hoặc không tìm thấy, dùng latestData như cũ
     const latestData = dayData || realtimeData?.latest;
