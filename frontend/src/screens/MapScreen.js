@@ -33,6 +33,7 @@ import {
 import { getAQICategory } from '../utils/aqiUtils';
 import { generateLeafletHTML } from '../utils/mapHtmlUtils';
 const CONTROL_HEIGHT = 40;
+const FORECAST_DAY_COUNT = 10; // Today plus the next 9 days from tif_files
 
 export default function MapScreen() {
   const { saveCurrentLocation } = useLocationTracking(true); // Enable auto-tracking
@@ -67,7 +68,7 @@ export default function MapScreen() {
     ensurePermission();
     return () => { mounted = false; };
   }, []);
-  const [dayOptions] = useState(createDayOptions);
+  const [dayOptions] = useState(() => createDayOptions(FORECAST_DAY_COUNT));
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [dayMenuOpen, setDayMenuOpen] = useState(false);
   const selectedDay = dayOptions[selectedDayIndex];
