@@ -3,7 +3,7 @@ API router initialization
 """
 from fastapi import APIRouter
 
-from .endpoints import auth, location, notification, pm25, weather
+from .endpoints import auth, location, notification, pm25, weather, chat
 
 api_router = APIRouter()
 
@@ -21,3 +21,6 @@ api_router.include_router(location.router, prefix="/location", tags=["Location"]
 
 # Include Notification endpoints
 api_router.include_router(notification.router, prefix="/notifications", tags=["Notifications"])
+
+# Include Chat endpoints
+api_router.include_router(chat.router, tags=["Chat"])
