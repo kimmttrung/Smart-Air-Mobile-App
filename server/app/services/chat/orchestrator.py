@@ -1,11 +1,13 @@
-
-# from app.services.chat.llm_factory import get_chat_llm
+from app.services.chat.rag_service import RAGService
+from app.services.chat.text_to_sql_service import TextToSQLService
+from app.services.chat.llm_factory import get_chat_llm
 from langchain_core.prompts import PromptTemplate
 
-
+rag = RAGService()
+text_sql = TextToSQLService()
 
 # Dùng LLM để phân loại (rẻ/nhanh, temperature=0)
-# classifier_llm = get_chat_llm(temperature=0)
+classifier_llm = get_chat_llm(temperature=0)
 
 class ChatOrchestrator:
     @staticmethod
@@ -31,7 +33,7 @@ class ChatOrchestrator:
         Nhãn:
         """)
 
-        chain = prompt 
+        chain = prompt | classifier_llm
         # Dùng ainvoke để chạy bất đồng bộ
         result = (await chain.ainvoke({"question": question})).content.strip().upper()
 
@@ -39,4 +41,10 @@ class ChatOrchestrator:
             return "SQL"
         return "RAG"
 
-    
+    @staticmethod
+    async def route(question: str):
+        intent = await ChatOrchestrator._classify_intent(question)
+        if intent == "SQL":
+            return "text_to_sql", await text_sql.process(question)
+        else:
+            return "rag", await rag.query(question) # Nhớ await nếu rag.query là async
