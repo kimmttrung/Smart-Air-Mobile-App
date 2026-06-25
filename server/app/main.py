@@ -6,6 +6,7 @@ import logging
 from app.api import api_router
 from app.core.config import settings
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
+from app.db.postgres_db import init_postgres_pool, close_postgres_pool 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -46,12 +47,33 @@ async def startup_event():
     except Exception as e:
         logger.error(f"❌ Failed to connect to MongoDB: {e}")
         # Continue without MongoDB - some endpoints may not work
+    
+    # --- KẾT NỐI POSTGRESQL (MỚI THÊM) ---
+    try:
+        await init_postgres_pool()
+        logger.info("✅ PostgreSQL connection established")
+    except Exception as e:
+        logger.error(f"❌ Failed to connect to PostgreSQL: {e}")
+
+    # --- Kiểm tra TIF files (Giữ nguyên) ---
+    logger.info(f"📁 TIF directory: {settings.TIF_DIR}")
+    if settings.TIF_DIR.exists():
+        tif_files = list(settings.TIF_DIR.glob("PM25_*.tif"))
+        logger.info(f"✅ Found {len(tif_files)} GeoTIFF files")
+        for tif in tif_files[:5]:
+            logger.info(f"  - {tif.name}")
+    else:
+        logger.warning(f"⚠️ TIF directory does not exist: {settings.TIF_DIR}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close MongoDB connection on shutdown"""
     logger.info("🔄 Shutting down application...")
     await close_mongo_connection()
+    # --- ĐÓNG POSTGRESQL (MỚI THÊM) ---
+    await close_postgres_pool()
+    logger.info("✅ PostgreSQL connection closed")
+
     logger.info("✅ Application shutdown complete")
 
 # Include API router
@@ -86,28 +108,6 @@ async def health_check():
         "tif_directory_exists": settings.TIF_DIR.exists(),
         "tif_files_count": tif_count
     }
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Application startup event"""
-    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
-    logger.info(f"TIF directory: {settings.TIF_DIR}")
-    
-    if settings.TIF_DIR.exists():
-        tif_files = list(settings.TIF_DIR.glob("PM25_*.tif"))
-        logger.info(f"Found {len(tif_files)} GeoTIFF files")
-        for tif in tif_files[:5]:  # Log first 5 files
-            logger.info(f"  - {tif.name}")
-    else:
-        logger.warning(f"TIF directory does not exist: {settings.TIF_DIR}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown event"""
-    logger.info("Shutting down application")
-
 
 
 @app.get('/swagger', response_class=HTMLResponse)
