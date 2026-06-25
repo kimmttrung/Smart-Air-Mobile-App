@@ -48,8 +48,9 @@ try {
   // ignore
 }
 
-// ⚠️  Change this to your AI server's IP/port if needed
-const LOCAL_AI_SERVER_URL = 'http://192.168.1.7:8005';
+// ⚠️  Same backend as api.js (BASE_URL) — the chat endpoints now live on the
+// main FastAPI server, not a separate AI server.
+const LOCAL_AI_SERVER_URL = 'http://192.168.1.6:8000';
 const DEFAULT_AI_FALLBACK = 'http://10.0.2.2:8000'; // Android emulator localhost
 
 /**
