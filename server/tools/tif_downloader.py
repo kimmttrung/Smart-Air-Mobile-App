@@ -87,9 +87,9 @@ if not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY:
 TIF_DIR = settings.TIF_DIR
 
 
-def get_next_7_days():
+def get_next_10_days():
     """
-    Tính toán 7 ngày tiếp theo từ 00:00 hiện tại
+    Tính toán 10 ngày tiếp theo từ 00:00 hiện tại
 
     Returns:
         List of date strings in YYYYMMDD format
@@ -99,7 +99,7 @@ def get_next_7_days():
     )
     dates = []
 
-    for i in range(0, 8):  # 7 ngày tiếp theo (từ ngày mai đến +7 ngày)
+    for i in range(0, 10):  # 10 ngày tiếp theo (từ ngày mai đến +9 ngày)
         date = today + timedelta(days=i)
         date_str = date.strftime('%Y%m%d')
         dates.append(date_str)
@@ -221,9 +221,9 @@ def download_tif_files():
     except Exception as e:
         logger.error(f'❌ Lỗi kết nối MinIO: {e}')
         return
-
+    
     # Lấy danh sách 7 ngày tiếp theo
-    dates = get_next_7_days()
+    dates = get_next_10_days()
     logger.info(
         f'📅 Sẽ tải file cho {len(dates)} ngày: '
         f'{dates[0]} đến {dates[-1]}'
