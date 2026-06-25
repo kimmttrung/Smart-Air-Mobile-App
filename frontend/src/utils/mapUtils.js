@@ -1,13 +1,14 @@
 /**
  * Create day options for forecast selector
+ * @param {number} days - Number of days to generate, including today
  * @returns {Array} Array of day options with label, dateStr, and isoDate
  */
-export const createDayOptions = () => {
+export const createDayOptions = (days = 7) => {
   const weekdays = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
   const result = [];
   const today = new Date();
 
-  for (let offset = 0; offset < 7; offset++) {
+  for (let offset = 0; offset < days; offset++) {
     const d = new Date(today);
     d.setDate(today.getDate() + offset);
     const dayName = weekdays[d.getDay()];

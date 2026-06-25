@@ -20,7 +20,6 @@ export default function MapTopBar({
 }) {
   return (
     <View style={styles.topBar}>
-      {/* Thanh search giống SmartAir-UI */}
       <View style={styles.searchWrapper}>
         <Feather name="search" size={16} color="#9ca3af" style={styles.searchIcon} />
         <TextInput

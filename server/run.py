@@ -17,9 +17,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_next_7_days():
+def get_next_10_days():
     """
-    Tính toán 7 ngày tiếp theo từ 00:00 hiện tại
+    Tính toán 10 ngày tiếp theo từ 00:00 hiện tại
 
     Returns:
         List of date strings in YYYYMMDD format
@@ -29,7 +29,7 @@ def get_next_7_days():
     )
     dates = []
 
-    for i in range(1, 8):  # 7 ngày tiếp theo (từ ngày mai đến +7 ngày)
+    for i in range(1, 10):  # 10 ngày tiếp theo (từ ngày mai đến +9 ngày)
         date = today + timedelta(days=i)
         date_str = date.strftime('%Y%m%d')
         dates.append(date_str)
@@ -39,7 +39,7 @@ def get_next_7_days():
 
 def check_tif_files_available():
     """
-    Kiểm tra xem đã có đủ 7 ngày TIF files tiếp theo chưa
+    Kiểm tra xem đã có đủ 10 ngày TIF files tiếp theo chưa
 
     Returns:
         tuple: (has_all_files: bool, missing_dates: list)
@@ -47,7 +47,7 @@ def check_tif_files_available():
     if not settings.TIF_DIR.exists():
         return False, []
 
-    dates = get_next_7_days()
+    dates = get_next_10_days()
     missing_dates = []
 
     for date_str in dates:
@@ -65,7 +65,7 @@ def check_tif_files_available():
 
 def ensure_tif_files():
     """
-    Đảm bảo có đủ 7 ngày TIF files tiếp theo
+    Đảm bảo có đủ 10 ngày TIF files tiếp theo
     Tự động tải nếu thiếu
     """
     logger.info('🔍 Kiểm tra TIF files...')
@@ -83,7 +83,7 @@ def ensure_tif_files():
     )
 
     if has_all:
-        logger.info('✅ Đã có đủ 7 ngày TIF files tiếp theo')
+        logger.info('✅ Đã có đủ 10 ngày TIF files tiếp theo')
         return
 
     logger.warning(

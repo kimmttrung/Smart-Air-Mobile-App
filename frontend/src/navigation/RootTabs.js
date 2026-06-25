@@ -9,6 +9,7 @@ import MapScreen from '../screens/MapScreen';
 import NewsScreen from '../screens/NewsScreen';
 import NotificationScreen from '../screens/NotificationScreen';
 import notificationService from '../services/notificationService';
+import AIChatScreen from '../screens/AIChatScreen';
 const Tab = createBottomTabNavigator();
 
 function SimpleTabLabel({ label, focused }) {
@@ -128,7 +129,7 @@ export default function RootTabs() {
           ),
         }}
       />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="News"
         component={NewsScreen}
         options={{
@@ -144,7 +145,7 @@ export default function RootTabs() {
             <SimpleTabLabel label="Tin tức" focused={focused} />
           ),
         }}
-      />
+      /> */}
       <Tab.Screen
         name="AIChat"
         component={AIChatScreen}
