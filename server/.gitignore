@@ -59,7 +59,6 @@ htmlcov/
 # Firebase
 firebase_admin_config.json
 firebase_key/
-testing/
 docs/
 node_modules/
 .vercel

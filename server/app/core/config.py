@@ -66,6 +66,31 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "nrt-sci-pm25-map-daily-1km"
     MINIO_SECURE: bool = False
 
+    OPENAI_API_KEY: str = ""  
+    LLM_MODEL_v1: str = "gpt-4o-mini" 
+    VECTOR_DB_PATH: str = "./data/vector_db"
+    KNOWLEDGE_PATH: str = "./data/knowledge"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"  # OpenAI
+
+    # LLM provider switch: "gemini" hoặc "groq"
+    # Dùng để chuyển đổi khi Gemini free-tier hết quota mà không cần sửa code.
+    LLM_PROVIDER: str = "groq"
+
+    # Google Gemini
+    GOOGLE_API_KEY: str
+    LLM_MODEL: str = "gemini-2.5-flash"
+
+    # Groq (OpenAI-compatible, free tier nhanh/rộng hơn Gemini free-tier)
+    # Lấy key tại: https://console.groq.com/keys
+    GROQ_API_KEY: str = ""
+    LLM_MODEL_GROQ: str = "llama-3.3-70b-versatile"
+
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_DB: str
+
     class Config:
         case_sensitive = True
         env_file = ".env"

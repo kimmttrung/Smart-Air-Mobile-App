@@ -9,6 +9,7 @@ import MapScreen from '../screens/MapScreen';
 import NewsScreen from '../screens/NewsScreen';
 import NotificationScreen from '../screens/NotificationScreen';
 import notificationService from '../services/notificationService';
+import AIChatScreen from '../screens/AIChatScreen'; // Sửa lại đúng đường dẫn file chat của bạn
 const Tab = createBottomTabNavigator();
 
 function SimpleTabLabel({ label, focused }) {

@@ -67,3 +67,9 @@ dotenv
 
 # Scheduler for automatic download
 schedule>=1.2.0
+
+# Chat (RAG + Text-to-SQL): Postgres driver + LLM providers
+asyncpg==0.31.0
+langchain-core==1.4.8
+langchain-google-genai==4.2.5
+langchain-groq==1.1.3
