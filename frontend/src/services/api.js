@@ -21,19 +21,19 @@ let detectedBackendUrl = null;
 try {
   const manifest = Constants.manifest || Constants.expoConfig || {};
   const expoConfig = Constants.expoConfig || {};
-  
+
   console.warn('[api.js] Expo Constants available:');
   if (manifest.debuggerHost) console.warn(`  manifest.debuggerHost: ${manifest.debuggerHost}`);
-  
-  const debuggerHost = 
-    manifest.debuggerHost || 
+
+  const debuggerHost =
+    manifest.debuggerHost ||
     manifest.extra?.debuggerHost ||
     expoConfig.extra?.debuggerHost ||
     null;
-  
+
   if (debuggerHost) {
     const hostPart = debuggerHost.includes(':') ? debuggerHost.split(':')[0] : debuggerHost;
-    
+
     if (hostPart && hostPart !== 'localhost' && hostPart !== '127.0.0.1' && !hostPart.startsWith('127.')) {
       detectedBackendUrl = `http://${hostPart}:8000`;
       console.warn(`[api.js] ✓ Auto-detected backend: ${detectedBackendUrl}`);
@@ -64,14 +64,14 @@ export const checkServerConnection = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-    
+
     const response = await fetch(`${BASE_URL}/health`, {
       method: 'GET',
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (response.ok) {
       console.warn(`[api.js] ✅ Server is reachable at ${BASE_URL}`);
       return { success: true, message: 'Server connected' };
@@ -81,9 +81,9 @@ export const checkServerConnection = async () => {
     }
   } catch (error) {
     console.error(`[api.js] ❌ Cannot connect to server at ${BASE_URL}:`, error.message);
-    return { 
-      success: false, 
-      message: `Cannot reach server at ${BASE_URL}. Please check:\n1. Backend is running\n2. IP address is correct\n3. Phone and server are on the same network` 
+    return {
+      success: false,
+      message: `Cannot reach server at ${BASE_URL}. Please check:\n1. Backend is running\n2. IP address is correct\n3. Phone and server are on the same network`
     };
   }
 };
@@ -123,7 +123,7 @@ const api = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       console.warn(`[api.js] saveLocation: Auth object keys:`, Object.keys(auth));
       const token = auth.token || auth.access_token;
@@ -131,9 +131,9 @@ const api = {
         console.error(`[api.js] saveLocation: No token found. Auth data:`, auth);
         throw new Error('No JWT token found in auth data.');
       }
-      
+
       console.warn(`[api.js] saveLocation: Using token (first 20 chars): ${token.substring(0, 20)}...`);
-      
+
       // Check if token is expired
       if (isTokenExpired(token)) {
         console.error(`[api.js] saveLocation: Token is EXPIRED - user needs to login again`);
@@ -142,14 +142,14 @@ const api = {
 
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ user_id: userId, lat, lng, aqi, pm25, address })
       });
-      
+
       console.warn(`[api.js] saveLocation: Response status ${res.status}`);
       if (!res.ok) {
         const text = await res.text();
@@ -177,18 +177,18 @@ const api = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
 
       const res = await fetch(url, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`
-    
+
         }
       });
-      
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`HTTP ${res.status}: ${text}`);
@@ -211,17 +211,17 @@ const api = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
 
       const res = await fetch(url, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`HTTP ${res.status}: ${text}`);
@@ -321,7 +321,7 @@ const api = {
     }
     const url = `${BASE_URL}/pm25/point?lon=${lon}&lat=${lat}${dateParam}`;
     console.warn(`[api.js] getPM25Point: GET from ${url}`);
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         if (attempt > 0) {
@@ -329,10 +329,10 @@ const api = {
           // Wait before retry (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s
-        
+
         const res = await fetch(url, {
           method: 'GET',
           headers: {
@@ -342,20 +342,20 @@ const api = {
           },
           signal: controller.signal,
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`HTTP ${res.status}: ${text}`);
         }
-        
+
         const data = await res.json();
         console.warn(`[api.js] getPM25Point: Success, AQI=${data.aqi}`);
         return data;
       } catch (err) {
         const isLastAttempt = attempt === retries;
-        
+
         if (err.name === 'AbortError') {
           console.error(`[api.js] getPM25Point: Timeout after 8 seconds (attempt ${attempt + 1})`);
           if (isLastAttempt) {
@@ -386,7 +386,7 @@ const api = {
       const m = String(today.getMonth() + 1).padStart(2, '0');
       const d = String(today.getDate()).padStart(2, '0');
       const dateStr = `${y}${m}${d}`;
-      
+
       // Reuse getPM25Point for AQI data with today's date
       const data = await api.getPM25Point(lat, lon, dateStr);
       return {
@@ -437,7 +437,7 @@ api.auth = {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ email, username, password, profile })
@@ -466,11 +466,11 @@ api.auth = {
   getLocationStats: async (days = 7) => {
     const url = `${BASE_URL}/location/stats?days=${days}`;
     console.log(`[api.js] getLocationStats -> GET ${url}`);
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-      
+
       const res = await fetch(url, {
         method: 'GET',
         headers: {
@@ -479,21 +479,21 @@ api.auth = {
         },
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
-      
+
       const data = await res.json();
       console.log(`[api.js] getLocationStats response:`, {
         total_records: data.total_records,
         avg_aqi: data.avg_aqi,
         date_range: data.date_range,
       });
-      
+
       return data;
     } catch (err) {
       if (err.name === 'AbortError') {
@@ -514,7 +514,7 @@ api.auth = {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -553,7 +553,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -589,7 +589,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -626,7 +626,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -662,7 +662,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -698,7 +698,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -737,7 +737,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
@@ -773,7 +773,7 @@ api.notifications = {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const authStr = await AsyncStorage.getItem('auth');
       if (!authStr) throw new Error('No auth token found. Please login first.');
-      
+
       const auth = JSON.parse(authStr);
       const token = auth.token || auth.access_token;
       if (!token) throw new Error('No JWT token found in auth data.');
