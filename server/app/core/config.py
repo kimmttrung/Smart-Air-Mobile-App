@@ -85,6 +85,15 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int
     POSTGRES_DB: str
 
+    # Chatbot RAG — Vector DB (host ngoài)
+    # Endpoint: POST {VECTOR_DB_URL}/api/v1/search?top_k=N  body {"query": "..."}
+    #           GET  {VECTOR_DB_URL}/api/v1/health
+    VECTOR_DB_URL: str = "http://112.137.129.163:8001"
+    VECTOR_DB_TOP_K: int = 5
+
+    # Geocoding (Open-Meteo) cho tool point-lookup: tên địa danh -> lon/lat
+    GEOCODING_API_URL: str = "https://geocoding-api.open-meteo.com/v1/search"
+
     class Config:
         case_sensitive = True
         env_file = ".env"
