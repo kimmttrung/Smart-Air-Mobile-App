@@ -63,6 +63,70 @@ def get_tif_file_path(date_str: Optional[str] = None) -> Path:
         return tif_files[0]
 
 
+def read_pm25_at_point(
+    lon: float,
+    lat: float,
+    date_str: Optional[str] = None,
+) -> dict:
+    """
+    Đọc trực tiếp giá trị PM2.5 tại 1 toạ độ từ file GeoTIFF và quy đổi AQI.
+
+    Dùng chung cho endpoint /pm25/point và tool point-lookup của chatbot.
+
+    Args:
+        lon: Kinh độ
+        lat: Vĩ độ
+        date_str: Ngày YYYYMMDD. None -> dùng file mới nhất.
+
+    Returns:
+        dict gồm lon, lat, pm25, aqi, category, date, unit.
+        Nếu ngoài vùng dữ liệu -> pm25/aqi/category = None kèm "message".
+
+    Raises:
+        FileNotFoundError: Không tìm thấy file TIF cho ngày yêu cầu.
+    """
+    import rasterio
+    from rasterio.transform import rowcol
+
+    from app.services.aqi_service import get_aqi_category, pm25_to_aqi
+
+    tif_path = get_tif_file_path(date_str)
+    abs_path = str(tif_path.resolve())
+
+    with rasterio.open(abs_path) as src:
+        row, col = rowcol(src.transform, lon, lat)
+
+        if row < 0 or row >= src.height or col < 0 or col >= src.width:
+            return {
+                "lon": lon,
+                "lat": lat,
+                "pm25": None,
+                "aqi": None,
+                "category": None,
+                "date": date_str,
+                "message": "Coordinates out of bounds",
+            }
+
+        value = src.read(1)[row, col]
+
+        # Bỏ nodata và giá trị âm
+        if src.nodata is not None and value == src.nodata:
+            value = None
+        pm25_value = float(value) if value is not None and value >= 0 else None
+        aqi_value = pm25_to_aqi(pm25_value) if pm25_value is not None else None
+        category = get_aqi_category(aqi_value)
+
+        return {
+            "lon": lon,
+            "lat": lat,
+            "pm25": round(pm25_value, 1) if pm25_value is not None else None,
+            "aqi": aqi_value,
+            "category": category,
+            "date": date_str,
+            "unit": "μg/m³",
+        }
+
+
 def get_available_dates() -> List[dict]:
     """
     Get list of available dates from TIF files
