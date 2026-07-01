@@ -154,6 +154,10 @@ class OpenAIChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 512
     top_k: Optional[int] = 5
     stream: Optional[bool] = False
+    # Mở rộng ngoài chuẩn OpenAI: vị trí user cho tool point-lookup
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    date: Optional[str] = None
 
 class OpenAIChoice(BaseModel):
     index: int
@@ -184,16 +188,19 @@ async def openai_chat_completions(request: OpenAIChatCompletionRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
     question = user_messages[-1].content
 
+    logger.info(f"completions: lat={request.lat} lon={request.lon} date={request.date}")
+
     try:
-        agent_type, result = await ChatOrchestrator.route(question)
+        agent_type, result = await ChatOrchestrator.route(
+            question, lat=request.lat, lon=request.lon, date=request.date
+        )
     except Exception as e:
         logger.error(f"Chat completions error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-    if "error" in result:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    answer = result.get("answer", "")
+    # Trong giao diện chat, lỗi tool (vd thiếu vị trí) trả về như câu trả lời
+    # bình thường (200) để app hiển thị thân thiện, không phải bubble lỗi 400.
+    answer = result.get("error") or result.get("answer", "")
 
     return OpenAIChatCompletionResponse(
         id=f"chatcmpl-{uuid.uuid4().hex[:24]}",

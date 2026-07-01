@@ -91,7 +91,9 @@ class Settings(BaseSettings):
     VECTOR_DB_URL: str = "http://112.137.129.163:8001"
     VECTOR_DB_TOP_K: int = 5
 
-    # Geocoding (Open-Meteo) cho tool point-lookup: tên địa danh -> lon/lat
+    # Geocoding cho tool point-lookup: tên địa danh -> lon/lat
+    # Photon (OSM) là chính (hỗ trợ tốt phường/xã VN), Open-Meteo là fallback.
+    PHOTON_API_URL: str = "https://photon.komoot.io/api/"
     GEOCODING_API_URL: str = "https://geocoding-api.open-meteo.com/v1/search"
 
     class Config:

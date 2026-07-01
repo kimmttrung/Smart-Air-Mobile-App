@@ -50,7 +50,7 @@ try {
 
 // ⚠️  Same backend as api.js (BASE_URL) — the chat endpoints now live on the
 // main FastAPI server, not a separate AI server.
-const LOCAL_AI_SERVER_URL = 'http://192.168.1.6:8000';
+const LOCAL_AI_SERVER_URL = 'http://192.168.1.94:8000';
 const DEFAULT_AI_FALLBACK = 'http://10.0.2.2:8000'; // Android emulator localhost
 
 /**
@@ -150,9 +150,15 @@ export const chatCompletion = async (messages, options = {}) => {
     temperature = CHATBOT_CONFIG.temperature,
     max_tokens = CHATBOT_CONFIG.max_tokens,
     timeoutMs = CHATBOT_CONFIG.timeoutMs,
+    lat = null,   // vị trí user cho tool point-lookup ("chỗ tôi")
+    lon = null,
+    date = null,  // YYYYMMDD, tùy chọn
   } = options;
 
   console.warn(`[chatbotService] POST ${CHAT_COMPLETIONS_ENDPOINT}`)
+  console.warn(
+    `[chatbotService] coords ${lat != null && lon != null ? `lat=${lat} lon=${lon}` : 'KHÔNG có (câu "chỗ tôi" sẽ thiếu vị trí)'}`,
+  );
   // console.log("Message: ",messages);
 
   const controller = new AbortController();
@@ -172,6 +178,9 @@ export const chatCompletion = async (messages, options = {}) => {
       max_tokens,
       top_k,
       stream: false, // non-streaming for simplicity
+      // Gửi kèm toạ độ khi có -> backend dùng cho tool point-lookup.
+      ...(lat != null && lon != null ? { lat, lon } : {}),
+      ...(date ? { date } : {}),
     });
 
     const res = await fetch(CHAT_COMPLETIONS_ENDPOINT, {

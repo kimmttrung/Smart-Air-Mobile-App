@@ -25,6 +25,7 @@ import {
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
 import { scaleFont } from '../constants/responsive';
 import { sendChatMessage } from '../services/chatbotService';
@@ -331,7 +332,28 @@ export default function AIChatScreen() {
 
   const scrollRef   = useRef(null);
   const messagesRef = useRef(messages);
+  const coordsRef   = useRef(null); // cache vị trí user cho tool point-lookup
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // ── Lấy toạ độ user (best-effort, cache 1 lần/phiên) ──
+  const getUserCoords = useCallback(async () => {
+    if (coordsRef.current) return coordsRef.current;
+    try {
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        ({ status } = await Location.requestForegroundPermissionsAsync());
+      }
+      if (status !== 'granted') return null;
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      coordsRef.current = { lat: loc.coords.latitude, lon: loc.coords.longitude };
+      return coordsRef.current;
+    } catch (e) {
+      console.warn('[AIChatScreen] getUserCoords failed:', e?.message);
+      return null;
+    }
+  }, []);
 
   // ── Load history from storage on mount ──
   useEffect(() => {
@@ -375,7 +397,13 @@ export default function AIChatScreen() {
       setIsTyping(true);
 
       try {
-        const reply = await sendChatMessage(text, historyBeforeSend);
+        const coords = await getUserCoords();
+        const reply = await sendChatMessage(
+          text,
+          historyBeforeSend,
+          undefined,
+          coords ? { lat: coords.lat, lon: coords.lon } : {},
+        );
         setMessages((prev) => [
           ...prev,
           { id: Date.now() + 1, sender: 'bot', text: reply, time: timeNow() },
@@ -390,7 +418,7 @@ export default function AIChatScreen() {
         setIsTyping(false);
       }
     },
-    [input, isTyping]
+    [input, isTyping, getUserCoords]
   );
 
   const handleRetry = useCallback(

@@ -21,21 +21,28 @@ class ChatOrchestrator:
         Bạn là bộ phân loại intent cho chatbot tư vấn chất lượng không khí (ONKK).
         Phân loại câu hỏi của người dùng vào đúng MỘT trong 3 nhãn sau:
 
-        SQL — câu hỏi cần TRA SỐ LIỆU THỐNG KÊ từ database theo đơn vị hành chính:
-        AQI/PM2.5 trung bình, tổng, cao nhất/thấp nhất theo tỉnh/quận/huyện/phường/xã,
-        SO SÁNH mức độ ô nhiễm GIỮA CÁC KHU VỰC.
-        Ví dụ: "Quận nào ở Hà Nội ô nhiễm nhất?", "So sánh AQI Hà Nội và Đà Nẵng",
-        "AQI trung bình của tỉnh Cao Bằng là bao nhiêu?".
+        SQL — CHỈ khi câu hỏi cần TÍNH TOÁN THỐNG KÊ trên nhiều bản ghi: trung bình,
+        tổng, đếm, cao nhất/thấp nhất, xếp hạng, HOẶC SO SÁNH giữa 2+ khu vực.
+        Dấu hiệu từ khóa: "trung bình", "tổng", "cao nhất", "thấp nhất", "nhiều nhất",
+        "ít nhất", "so sánh", "xếp hạng", "top", "đứng đầu".
+        Ví dụ: "AQI trung bình của tỉnh Hưng Yên?", "Tổng PM2.5 quận Hoàn Kiếm",
+        "Quận nào ở Hà Nội ô nhiễm nhất?", "So sánh AQI Hà Nội và Đà Nẵng".
 
-        POINT — câu hỏi về mức ô nhiễm TẠI MỘT ĐỊA ĐIỂM/VỊ TRÍ CỤ THỂ ở thời điểm
-        hiện tại, hôm nay, hoặc trong tuần qua (đọc trực tiếp từ bản đồ).
-        Ví dụ: "AQI chỗ tôi bây giờ thế nào?", "Không khí ở Cầu Giấy hôm nay ra sao?",
-        "Mức độ ô nhiễm tại vị trí này trong tuần qua?".
+        POINT — hỏi mức ô nhiễm/AQI/PM2.5 TẠI MỘT ĐỊA ĐIỂM cụ thể (kể cả khi nêu tên
+        tỉnh/quận/huyện/phường/xã hoặc "chỗ tôi", "vị trí này") ở hiện tại/hôm nay/
+        tuần qua. KHÔNG yêu cầu tính trung bình/tổng/so sánh — chỉ tra 1 địa điểm.
+        Ví dụ: "AQI ở phường Thái Bình, Hưng Yên thế nào?",
+        "Không khí ở Cầu Giấy hôm nay ra sao?", "AQI chỗ tôi bây giờ?".
 
         RAG — câu hỏi về KIẾN THỨC chung, GIẢI THÍCH/DIỄN GIẢI khái niệm, tác động
         sức khỏe, hoặc TƯ VẤN hành động, KHÔNG cần số liệu tra cứu.
         Ví dụ: "PM2.5 là gì?", "AQI 150 ảnh hưởng sức khỏe thế nào?",
         "Tôi nên làm gì khi không khí ô nhiễm?".
+
+        QUY TẮC PHÂN BIỆT QUAN TRỌNG:
+        - Hỏi AQI ở một nơi cụ thể mà KHÔNG có từ thống kê (trung bình/tổng/so sánh/
+          cao nhất...) -> luôn là POINT, dù nơi đó là phường/quận/tỉnh.
+        - Chỉ khi có ý tính toán/so sánh/xếp hạng mới là SQL.
 
         Chỉ trả lời duy nhất một từ: SQL, POINT hoặc RAG. Không giải thích thêm.
 
