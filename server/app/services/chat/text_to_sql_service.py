@@ -66,6 +66,24 @@ class TextToSQLService:
         Trả lời ngắn gọn, đi thẳng vào vấn đề và đưa ra 1 khuyến nghị hành động.
         """)
 
+    @staticmethod
+    def _is_safe_select(sql: str) -> bool:
+        """Chỉ cho phép 1 câu lệnh đọc (SELECT/WITH), chặn từ khóa ghi/DDL."""
+        cleaned = sql.strip().rstrip(";").strip()
+        if not cleaned:
+            return False
+        lowered = cleaned.lower()
+        if not (lowered.startswith("select") or lowered.startswith("with")):
+            return False
+        # Chặn nhiều câu lệnh và các từ khóa nguy hiểm
+        if ";" in cleaned:
+            return False
+        forbidden = (
+            "insert", "update", "delete", "drop", "alter", "truncate",
+            "create", "grant", "revoke", "copy", "merge",
+        )
+        return not any(re.search(rf"\b{kw}\b", lowered) for kw in forbidden)
+
     async def process(self, question: str):
         # 1. Tạo SQL
         chain = self.sql_prompt | llm
@@ -79,7 +97,14 @@ class TextToSQLService:
             # Nếu không có markdown, cứ lấy nguyên xi (vì prompt đã cấm markdown)
             sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
 
-        # 2. Truy vấn Database
+        # 2. Chặn an toàn: chỉ cho phép câu lệnh đọc (SELECT/WITH)
+        if not self._is_safe_select(sql_query):
+            return {
+                "error": "Chỉ hỗ trợ truy vấn đọc dữ liệu (SELECT).",
+                "sql": sql_query,
+            }
+
+        # 3. Truy vấn Database
         pool = get_pool()
         if not pool:
             return {"error": "Database connection is not initialized", "sql": sql_query}
@@ -97,7 +122,7 @@ class TextToSQLService:
         except Exception as e:
             return {"error": f"Lỗi không xác định: {str(e)}", "sql": sql_query}
 
-        # 3. Diễn giải kết quả (Truyền thêm cả 'question' để LLM hiểu ngữ cảnh)
+        # 4. Diễn giải kết quả (Truyền thêm cả 'question' để LLM hiểu ngữ cảnh)
         interpret_chain = self.interpret_prompt | llm
         interpretation = (await interpret_chain.ainvoke({
             "sql_result": str(data), 
